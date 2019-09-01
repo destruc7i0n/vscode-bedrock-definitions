@@ -100,8 +100,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
       let isPointerText: boolean = false
 
       for (let [ prefixType, prefix ] of validPrefixes) {
-        // check for the prefix, and that it is not a definition itself
-        if (currText.startsWith(prefix) && key !== currText) {
+        if (currText.startsWith(prefix)) {
           type = prefixType
           isPointerText = true
           break
@@ -124,29 +123,41 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
       if (isPointerText) {
         let location: vscode.Location | undefined
 
-        if (type === AnimationController) {
-          location = await this.handleKeyType(type, 'animation_controllers', currText, 'animation_controllers')
-        } else if (type === RenderController) {
-          location = await this.handleKeyType(type, 'render_controllers', currText, 'render_controllers')
-        } else if (type === Animation) {
-          location = await this.handleKeyType(type, 'animations', currText, 'animations')
-        } else if (type === Geometry) {
-          location = await this.handleGeometry(currText)
-        } else if (type === Particle) {
-          location = await this.handleParticles(currText)
+        // check that in client file, to not perform on the definition itself
+        const isClientFile = pathKeys.includes('minecraft:client_entity')
+        const isBehaviourFile = pathKeys.includes('minecraft:entity')
+
+        if (isClientFile) {
+          if (type === AnimationController) {
+            location = await this.handleKeyType(type, 'animation_controllers', currText, 'animation_controllers')
+          } else if (type === RenderController) {
+            location = await this.handleKeyType(type, 'render_controllers', currText, 'render_controllers')
+          } else if (type === Animation) {
+            location = await this.handleKeyType(type, 'animations', currText, 'animations')
+          } else if (type === Geometry) {
+            location = await this.handleGeometry(currText)
+          } else if (type === Particle) {
+            location = await this.handleParticles(currText)
+          } else if (type === Texture) {
+            location = await this.handleTextures(currText)
+          } else if (type === Material) {
+            location = await this.handleMaterials(currText)
+          }
         }
 
-        // diff types
-        if (type === EventIdentifier) {
-          location = await this.goToBehaviourDefinition(document, 'events', currText)
-        } else if (type === Texture) {
-          location = await this.handleTextures(currText)
-        } else if (type === Material) {
-          location = await this.handleMaterials(currText)
-        } else if (type === ComponentGroup && pathKeys.includes('events')) { // check that this is for events
-          location = await this.goToBehaviourDefinition(document, 'component_groups', currText)
-        } else if (type === Animate && pathKeys.includes('scripts') && pathKeys.includes('animate')) {
-          location = await this.goToScriptsAnimate(document, currText)
+        if (isBehaviourFile) {
+          if (type === EventIdentifier) {
+            location = await this.goToBehaviourDefinition(document, 'events', currText)
+          } else if (type === ComponentGroup && pathKeys.includes('events')) { // check that this is for events
+            location = await this.goToBehaviourDefinition(document, 'component_groups', currText)
+          }
+        }
+
+        // works for both
+        if (isClientFile || isBehaviourFile) {
+          if (type === Animate && pathKeys.includes('scripts') && pathKeys.includes('animate')) {
+            location = await this.goToScriptsAnimate(document, currText)
+          }
         }
 
         if (!location) new vscode.Location(document.uri, currWordRange)
