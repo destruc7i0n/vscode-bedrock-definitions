@@ -1,0 +1,49 @@
+{
+  "name": "vscode-bedrock-definitions",
+  "displayName": "vscode-bedrock-definitions",
+  "description": "Bedrock Definitions for Bedrock",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.22.0"
+  },
+  "author": {
+    "name": "destruc7i0n",
+    "e-mail": "destruc7i0n@thedestruc7i0n.ca"
+  },
+  "license": "MIT",
+  "publisher": "destruc7i0n",
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "Minecraft"
+  ],
+  "activationEvents": [
+    "onLanguage:json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {},
+  "scripts": {
+    "vscode:prepublish": "yarn run build",
+    "build": "parcel build src/extension.ts --target=node --no-minify",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.1",
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^10.12.21",
+    "glob": "^7.1.4",
+    "mocha": "^6.1.4",
+    "parcel": "^1.12.3",
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.1",
+    "vscode": "^1.1.36",
+    "vscode-test": "^1.0.2"
+  },
+  "dependencies": {
+    "json-source-map": "^0.6.1"
+  }
+}
