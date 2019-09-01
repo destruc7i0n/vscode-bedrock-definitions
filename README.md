@@ -28,7 +28,7 @@ Go-to Bedrock definitions for Visual Studio Code
 
 ## Development
 
-To develop, install the packages with `yarn install`, open in Visual Studio code, and hit F5 to start the development server.
+To develop, install the packages with `yarn install`, open in Visual Studio Code, and hit F5 to start the development server.
 
 ## Contributing
 

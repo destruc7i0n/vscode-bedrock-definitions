@@ -51,7 +51,7 @@ type sharedDescription = {
 export default class BedrockDefinitionProvider implements vscode.DefinitionProvider {
   constructor () {}
 
-  async provideDefinition (document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.Location | undefined | null> {
+  async provideDefinition (document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.Location | undefined> {
     const documentText = document.getText()
 
     const editor = vscode.window.activeTextEditor
@@ -100,7 +100,8 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
       let isPointerText: boolean = false
 
       for (let [ prefixType, prefix ] of validPrefixes) {
-        if (currText.startsWith(prefix)) {
+        // check for the prefix, and that it is not a definition itself
+        if (currText.startsWith(prefix) && key !== currText) {
           type = prefixType
           isPointerText = true
           break

@@ -1,7 +1,7 @@
 {
   "name": "vscode-bedrock-definitions",
-  "displayName": "vscode-bedrock-definitions",
-  "description": "Bedrock Definitions for Bedrock",
+  "displayName": "Bedrock Definitions",
+  "description": "Go-to Bedrock definitions for Visual Studio Code",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.22.0"
@@ -9,6 +9,10 @@
   "author": {
     "name": "destruc7i0n",
     "e-mail": "destruc7i0n@thedestruc7i0n.ca"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/destruc7i0n/vscode-bedrock-definitions"
   },
   "license": "MIT",
   "publisher": "destruc7i0n",
@@ -24,8 +28,7 @@
   "main": "./out/extension.js",
   "contributes": {},
   "scripts": {
-    "vscode:prepublish": "yarn run build",
-    "build": "parcel build src/extension.ts --target=node --no-minify",
+    "vscode:prepublish": "yarn run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "yarn run compile",
@@ -37,7 +40,6 @@
     "@types/node": "^10.12.21",
     "glob": "^7.1.4",
     "mocha": "^6.1.4",
-    "parcel": "^1.12.3",
     "tslint": "^5.12.1",
     "typescript": "^3.3.1",
     "vscode": "^1.1.36",
