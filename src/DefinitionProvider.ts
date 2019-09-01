@@ -52,7 +52,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
   constructor () {}
 
   async provideDefinition (document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.Location | undefined | null> {
-    const documentText = this.removeComments(document.getText())
+    const documentText = document.getText()
 
     const editor = vscode.window.activeTextEditor
 
@@ -67,13 +67,6 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     let parent = path[path.length - 2].key
     if (parent === undefined && path.length > 3) parent = path[path.length - 3].key
     const key = path[path.length - 1].key
-
-    let parsedDocument: object
-    try {
-      parsedDocument = parse(documentText)
-    } catch (e) {
-      return
-    }
 
     const validPrefixes: Array<[ string, string ]> = [
       [AnimationController, 'controller.animation.'],
@@ -209,10 +202,15 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
         const documentPointers = parse(textContent).pointers
         if (release < 12) {
           // 1.8.0 format
+          // check for a parented model
+          if (!textContentJSON[geometryName]) {
+            const parentedModel = Object.keys(textContentJSON).find(k => k.startsWith(`${geometryName}:`))
+            if (parentedModel) geometryName = parentedModel
+          }
           if (textContentJSON[geometryName]) {
             const path = `/${geometryName}`
             const pointer = documentPointers[path]
-            if (pointer) return new vscode.Location(modelFile, new vscode.Position(pointer.key.line, pointer.key.pos))
+            if (pointer) return new vscode.Location(modelFile, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
           }
         } else {
           // 1.12.0 format
@@ -256,7 +254,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
           const documentPointers = parse(textContent).pointers
           const path = `/particle_effect`
           const pointer = documentPointers[path]
-          if (pointer) return new vscode.Location(particleFile, new vscode.Position(pointer.key.line, pointer.key.pos))
+          if (pointer) return new vscode.Location(particleFile, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
         }
       }
     }
@@ -297,7 +295,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
         const documentPointers = parse(textContent).pointers
         const path = `/${prefix}/${fullName}`
         const pointer = documentPointers[path]
-        if (pointer) return new vscode.Location(file, new vscode.Position(pointer.key.line, pointer.key.pos))
+        if (pointer) return new vscode.Location(file, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
       }
     }
 
@@ -331,7 +329,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
         const documentPointers = parse(textContent).pointers
         const path = `/materials/${key}`
         const pointer = documentPointers[path]
-        if (pointer) return new vscode.Location(materialFile, new vscode.Position(pointer.key.line, pointer.key.pos))
+        if (pointer) return new vscode.Location(materialFile, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
       }
     }
     return
@@ -346,7 +344,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
         if (documentJSON['minecraft:entity'][key][definition]) {
           const path = `/minecraft:entity/${key}/${definition}`
           const pointer = parsedDocument.pointers[path]
-          return new vscode.Location(document.uri, new vscode.Position(pointer.key.line, pointer.key.pos))
+          return new vscode.Location(document.uri, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
         }
       }
     }
@@ -371,7 +369,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
           if (fileRoot['description']['animations'][definition]) {
             const path = `/${fileRootType}/description/animations/${definition}`
             const pointer = parsedDocument.pointers[path]
-            return new vscode.Location(document.uri, new vscode.Position(pointer.key.line, pointer.key.pos))
+            return new vscode.Location(document.uri, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
           }
         }
       }
