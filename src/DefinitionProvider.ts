@@ -1,3 +1,5 @@
+import * as path from 'path'
+ 
 import * as vscode from 'vscode'
 
 import { jsonPathTo } from './jsonPathTo'
@@ -49,10 +51,11 @@ type sharedDescription = {
 }
 
 export default class BedrockDefinitionProvider implements vscode.DefinitionProvider {
-  constructor () {}
+  private document: vscode.TextDocument | undefined
 
   async provideDefinition (document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.Location | undefined> {
     const documentText = document.getText()
+    this.document = document
 
     const editor = vscode.window.activeTextEditor
 
@@ -63,6 +66,13 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
 
     // if there is not more than one level
     if (path.length < 2) return
+
+    // check that in client file, to not perform on the definition itself
+    const isClientFile = pathKeys[0] === 'minecraft:client_entity'
+    const isBehaviourFile = pathKeys[0] === 'minecraft:entity'
+
+    // only perform in these files for now
+    if (!isClientFile && !isBehaviourFile) return
 
     let parent = path[path.length - 2].key
     if (parent === undefined && path.length > 3) parent = path[path.length - 3].key
@@ -123,17 +133,9 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
       if (isPointerText) {
         let location: vscode.Location | undefined
 
-        // check that in client file, to not perform on the definition itself
-        const isClientFile = pathKeys.includes('minecraft:client_entity')
-        const isBehaviourFile = pathKeys.includes('minecraft:entity')
-
         if (isClientFile) {
-          if (type === AnimationController) {
-            location = await this.handleKeyType(type, 'animation_controllers', currText, 'animation_controllers')
-          } else if (type === RenderController) {
-            location = await this.handleKeyType(type, 'render_controllers', currText, 'render_controllers')
-          } else if (type === Animation) {
-            location = await this.handleKeyType(type, 'animations', currText, 'animations')
+          if (type === RenderController) {
+            location = await this.handleKeyType('render_controllers', currText, 'render_controllers')
           } else if (type === Geometry) {
             location = await this.handleGeometry(currText)
           } else if (type === Particle) {
@@ -157,6 +159,10 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
         if (isClientFile || isBehaviourFile) {
           if (type === Animate && pathKeys.includes('scripts') && pathKeys.includes('animate')) {
             location = await this.goToScriptsAnimate(document, currText)
+          } else if (type === Animation) {
+            location = await this.handleKeyType('animations', currText, 'animations')
+          } else if (type === AnimationController) {
+            location = await this.handleKeyType('animation_controllers', currText, 'animation_controllers')
           }
         }
 
@@ -167,15 +173,46 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     }
     return
   }
+  
+  /**
+   * Orders the provided files by the distance from the current active file
+   * @param files the files to order
+   */
+  private orderByDistance (files: vscode.Uri[]): any {
+    if (this.document) {
+      const currentFile = this.document.fileName
+      const sortedFiles = files.sort(({ path: aPath }, { path: bPath }) => {
+        // get the closest file basded on the relative location of it and order
+        const relativeToA = path.relative(currentFile, aPath).split(path.sep)
+        const relativeToB = path.relative(currentFile, bPath).split(path.sep)
+        return relativeToA.length - relativeToB.length
+      })
+      return sortedFiles
+    }
+    return files
+  }
 
+  /**
+   * Removes all JavaScript-like comments from the file provided
+   * @param text the raw text from the file
+   */
   private removeComments (text: string): string {
     return text.replace(/\/\*[^(\*\/)]*\*\/|\/\/.*/g, '')
   }
 
+  /**
+   * Gets all JSON files from the folder provided
+   * @param folder the folder name to get files from
+   */
   private async getFilesByFolder (folder: string): Promise<vscode.Uri[]> {
-    return await vscode.workspace.findFiles(`**/${folder}/**/*.json`)
+    return this.orderByDistance(await vscode.workspace.findFiles(`**/${folder}/**/*.json`))
   }
 
+  /**
+   * Checks the identifier of an object
+   * @param description The description object
+   * @param identifier The identifier to check for
+   */
   private verifyDescriptionIdentifier (description: descriptionObject, identifier: string) {
     if (description['description'] && description['description']['identifier']) {
       if (description['description']['identifier'] === identifier) {
@@ -185,6 +222,10 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     return false
   }
 
+  /**
+   * Handles geometry files in both formats
+   * @param geometryName the geometry name, in the format geometery.
+   */
   private async handleGeometry (geometryName: string): Promise<vscode.Location | undefined> {
     const models = await this.getFilesByFolder('models')
 
@@ -244,6 +285,10 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     return
   }
 
+  /**
+   * Handles particle files
+   * @param particleName the particle name, in the format namespace:identifier
+   */
   private async handleParticles (particleName: string): Promise<vscode.Location | undefined> {
     const particles = await this.getFilesByFolder('particles')
 
@@ -273,6 +318,10 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     return
   }
 
+  /**
+   * Attempts to find the png of the texture at the path provided
+   * @param path The path of the texture
+   */
   private async handleTextures (path: string): Promise<vscode.Location | undefined> {
     const textures = await vscode.workspace.findFiles(`**/${path}.png`)
 
@@ -284,7 +333,13 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     return
   }
 
-  private async handleKeyType (type: string, prefix: validPrefixStrings, fullName: string, folder: validPrefixStrings): Promise<vscode.Location | undefined> {
+  /**
+   * Handles render controllers, animations, animation controllez, etc. which have the same format of files
+   * @param prefix The prefix of the key
+   * @param fullName The identifier of the key
+   * @param folder The folder of the key
+   */
+  private async handleKeyType (prefix: validPrefixStrings, fullName: string, folder: validPrefixStrings): Promise<vscode.Location | undefined> {
     const files = await this.getFilesByFolder(folder)
 
     for (let file of files) {
@@ -314,6 +369,10 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     return
   }
 
+  /**
+   * Handles material files
+   * @param materialName The material name prefix
+   */
   private async handleMaterials (materialName: string): Promise<vscode.Location | undefined> {
     const materials = await vscode.workspace.findFiles(`**/materials/**/*.material`)
 
@@ -347,6 +406,12 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     return
   }
 
+  /**
+   * Handles going to/from events and their definition
+   * @param document The current document
+   * @param key The key to work with
+   * @param definition The definition name
+   */
   private async goToBehaviourDefinition (document: vscode.TextDocument, key: 'events' | 'component_groups', definition: string): Promise<vscode.Location | undefined> {
     const documentText = this.removeComments(document.getText())
     const parsedDocument = parse(documentText)
@@ -363,6 +428,11 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
     return
   }
 
+  /**
+   * Handles going from scripts/animate to the definition in the animations section
+   * @param document The current document
+   * @param definition The animation definition
+   */
   private async goToScriptsAnimate (document: vscode.TextDocument, definition: string): Promise<vscode.Location | undefined> {
     const documentText = this.removeComments(document.getText())
     const parsedDocument = parse(documentText)
