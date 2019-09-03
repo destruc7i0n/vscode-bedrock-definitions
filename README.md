@@ -2,6 +2,9 @@
 
 Go-to Bedrock definitions for Visual Studio Code
 
+## What does it do?
+[Video of it in action](https://streamable.com/k3bel)
+
 ## Features
 
 - Ctrl (or Cmd on macOS) and hover over definitions to preview the definition in the file
