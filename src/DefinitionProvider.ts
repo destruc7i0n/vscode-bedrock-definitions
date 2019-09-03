@@ -178,7 +178,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
    * Orders the provided files by the distance from the current active file
    * @param files the files to order
    */
-  private orderByDistance (files: vscode.Uri[]): any {
+  private orderByDistance (files: vscode.Uri[]): vscode.Uri[] {
     if (this.document) {
       const currentFile = this.document.fileName
       const sortedFiles = files.sort(({ path: aPath }, { path: bPath }) => {
