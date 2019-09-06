@@ -2,7 +2,8 @@
   "name": "vscode-bedrock-definitions",
   "displayName": "Bedrock Definitions",
   "description": "Go-to Bedrock definitions for Visual Studio Code",
-  "version": "0.0.1",
+  "icon": "icon.png",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.22.0"
   },
@@ -23,7 +24,8 @@
     "Minecraft"
   ],
   "activationEvents": [
-    "onLanguage:json"
+    "onLanguage:json",
+    "onLanguage:jsonc"
   ],
   "main": "./out/extension.js",
   "contributes": {},

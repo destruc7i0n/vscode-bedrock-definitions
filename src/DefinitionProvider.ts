@@ -397,12 +397,15 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
         // find the first key which starts with the material
         const key = materialNames.find(key => key.startsWith(`${materialName}:`))
 
-        const documentPointers = parse(textContent).pointers
-        const path = `/materials/${key}`
-        const pointer = documentPointers[path]
-        if (pointer) return new vscode.Location(materialFile, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
+        if (key) {
+          const documentPointers = parse(textContent).pointers
+          const path = `/materials/${key}`
+          const pointer = documentPointers[path]
+          if (pointer) return new vscode.Location(materialFile, new vscode.Position(pointer.keyEnd.line, pointer.keyEnd.pos))
+        }
       }
     }
+
     return
   }
 
@@ -456,6 +459,7 @@ export default class BedrockDefinitionProvider implements vscode.DefinitionProvi
         }
       }
     }
+
     return
   }
 }
