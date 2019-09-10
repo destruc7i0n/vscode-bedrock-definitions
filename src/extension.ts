@@ -1,9 +1,11 @@
 import * as vscode from 'vscode'
 
-import DefinitionProvider from './DefinitionProvider'
+import DefinitionProvider from './providers/DefinitionProvider'
+import CompletionProvider from './providers/CompletionProvider'
 
 export function activate(context: vscode.ExtensionContext) {
   const definitionProvider = new DefinitionProvider()
+  const completionProvider = new CompletionProvider()
 
   console.log('Congratulations, your extension "vscode-bedrock-definitions" is now active!')
 
@@ -12,7 +14,12 @@ export function activate(context: vscode.ExtensionContext) {
     { scheme: 'file', language: 'jsonc' } // json with comments
   ], definitionProvider)
 
-  context.subscriptions.push(disposableDefinition)
+  let disposableCompletion = vscode.languages.registerCompletionItemProvider([
+    { scheme: 'file', language: 'json' }, // regular json
+    { scheme: 'file', language: 'jsonc' } // json with comments
+  ], completionProvider, '.', ':', '/') // activate when typing a period, colon, or forward slash
+
+  context.subscriptions.push(disposableDefinition, disposableCompletion)
 }
 
 export function deactivate() {}

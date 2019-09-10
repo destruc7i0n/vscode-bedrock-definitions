@@ -3,7 +3,7 @@
   "displayName": "Bedrock Definitions",
   "description": "Go-to Bedrock definitions for Visual Studio Code",
   "icon": "icon.png",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.22.0"
   },
@@ -39,15 +39,15 @@
   "devDependencies": {
     "@types/glob": "^7.1.1",
     "@types/mocha": "^5.2.6",
-    "@types/node": "^10.12.21",
+    "@types/node": "^12.7.4",
     "glob": "^7.1.4",
     "mocha": "^6.1.4",
-    "tslint": "^5.12.1",
-    "typescript": "^3.3.1",
+    "tslint": "^5.20.0",
+    "typescript": "^3.6.3",
     "vscode": "^1.1.36",
     "vscode-test": "^1.0.2"
   },
   "dependencies": {
-    "json-source-map": "^0.6.1"
+    "jsonc-parser": "^2.1.1"
   }
 }

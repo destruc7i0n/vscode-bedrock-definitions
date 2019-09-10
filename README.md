@@ -1,17 +1,19 @@
-# vscode-bedrock-definitions
+# Bedrock Definitions
 
-Go-to Bedrock definitions for Visual Studio Code
+Go-to Bedrock definitions and auto-complete for Visual Studio Code
 
 ## What does it do?
-[Video of it in action](https://streamable.com/k3bel)
+[Video of go-to definition in action](https://streamable.com/k3bel)
 
 ## Features
 
 - Ctrl (or Cmd on macOS) and hover over definitions to preview the definition in the file
 - Ctrl+click (Cmd+click on macOS) or hit F12 to go to the definition file
+- Auto-complete for parts of the definition
 
-- Works for the following types of definitions
+- Go-to definition works for the following types of definitions
   - Client definitions
+    - Entity identifier*
     - Render Controllers
     - Geometry
     - Materials
@@ -24,6 +26,19 @@ Go-to Bedrock definitions for Visual Studio Code
     - scripts/animate (go to definition in same file)
     - Events (go to the event from the usage in the file)
     - Component Groups (go to component groups from the usage in events)
+
+- Auto-complete works for the following types of definitions
+  - Client definitions
+    - Entity identifier*
+    - Render Controllers
+    - Geometry
+    - Particle Effects
+    - Textures
+    - Animations / Animation Controllers
+  - Server (Behaviour) definitions 
+    - Animations / Animation Controllers
+
+<sub><sup>*If the behaviour pack counterpart is open in the workspace</sup></sub>
 
 ## Known Issues
 
