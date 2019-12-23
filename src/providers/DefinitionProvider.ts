@@ -4,7 +4,7 @@ import { findNodeAtLocation } from 'jsonc-parser'
 
 import FileHandler, { validPrefixStrings } from '../lib/FileHandler'
 
-import SharedProvider, { TextType } from './SharedProvider'
+import SharedProvider, { TextType, FileType } from './SharedProvider'
 
 interface behaviourEntity {
   'minecraft:entity': {
@@ -27,7 +27,9 @@ export default class BedrockDefinitionProvider extends SharedProvider implements
     const { pathKeys } = this.getPathToCursor(document, position)
 
     // check that in client file, to not perform on the definition itself
-    const { isBehaviourFile, isClientFile } = this.getCurrentFileType(pathKeys)
+    const { type } = this.getCurrentFileType(pathKeys)
+    const isBehaviourFile = type === FileType.ServerDefinition
+    const isClientFile = type === FileType.ClientDefinition
 
     // only perform in these files for now
     if (!isClientFile && !isBehaviourFile) return
@@ -56,6 +58,8 @@ export default class BedrockDefinitionProvider extends SharedProvider implements
             location = await this.byFileType(fileHandler, 'materials', currText)
           } else if (type === TextType.ClientEntityIdentifier) {
             location = await this.byFileType(fileHandler, 'server_entity', currText)
+          } else if (type === TextType.SoundEffect) {
+            location = await this.byFileType(fileHandler, 'sound_definition', currText)
           }
         }
 
@@ -93,7 +97,7 @@ export default class BedrockDefinitionProvider extends SharedProvider implements
    * @param type the type of file
    * @param identifier the identifier to find
    */
-  private async byFileType (fileHandler: FileHandler, type: validPrefixStrings | 'particles' | 'server_entity' | 'client_entity', identifier: string): Promise<vscode.Location | undefined> {
+  private async byFileType (fileHandler: FileHandler, type: validPrefixStrings | 'particles' | 'server_entity' | 'client_entity' | 'sound_definition', identifier: string): Promise<vscode.Location | undefined> {
     let files, identifiers
     if (type === 'particles') {
       ({ files, identifiers } = await fileHandler.getParticles())
@@ -101,6 +105,8 @@ export default class BedrockDefinitionProvider extends SharedProvider implements
       ({ files, identifiers } = await fileHandler.getEntities('server'))
     } else if (type === 'client_entity') {
       ({ files, identifiers } = await fileHandler.getEntities('client'))
+    } else if (type === 'sound_definition') {
+      ({ files, identifiers } = await fileHandler.getSoundDefinitions())
     } else {
       ({ files, identifiers } = await fileHandler.getByFileType(type))
     }

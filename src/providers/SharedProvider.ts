@@ -11,17 +11,30 @@ export enum TextType {
   RenderController,
   Geometry,
   Material,
-  
   Particle,
   Texture,
-
   ClientEntityIdentifier,
   ServerEntityIdentifier,
-  
   EventIdentifier,
   ComponentGroup,
   Animate,
+  SoundEffect
 }
+
+/**
+ * The various file types
+ */
+export enum FileType {
+  AnimationController = 'AnimationController',
+  Animation = 'Animation',
+  RenderController = 'RenderController',
+  Geometry = 'Geometry',
+  Material = 'Material',
+  Particle = 'Particle',
+  ClientDefinition = 'ClientDefinition',
+  ServerDefinition = 'ServerDefinition',
+}
+export type FileTypes = keyof typeof FileType
 
 export default class SharedProvider {
   /**
@@ -44,14 +57,25 @@ export default class SharedProvider {
    * Determines the file type of the JSON file specified
    * @param pathKeys the path
    */
-  public getCurrentFileType (pathKeys: Array<any>): { isClientFile: boolean, isBehaviourFile: boolean } {
+  public getCurrentFileType (pathKeys: Array<any>): { type: FileTypes | null } {
     // check that in client file, to not perform on the definition itself
-    const isClientFile = pathKeys[0] === 'minecraft:client_entity'
-    const isBehaviourFile = pathKeys[0] === 'minecraft:entity'
+    const rootKey = pathKeys[0]
+
+    const pathRoots: { [key: string]: FileTypes } = {
+      'minecraft:client_entity': FileType.ClientDefinition,
+      'minecraft:entity': FileType.ServerDefinition,
+      'minecraft:geometry': FileType.Geometry,
+      'animations': FileType.Animation,
+      'animation_controllers': FileType.AnimationController,
+      'render_controllers': FileType.RenderController,
+    }
+
+    let pathType: FileTypes | null = null
+    if (pathRoots[rootKey]) pathType = pathRoots[rootKey]
+    else if (rootKey.startsWith('geometry.')) pathType = FileType.Geometry
 
     return {
-      isClientFile,
-      isBehaviourFile
+      type: pathType,
     }
   }
 
@@ -109,6 +133,7 @@ export default class SharedProvider {
       [TextType.Material           , null                       , [ 'materials' ]                          ],
       [TextType.ComponentGroup     , null                       , [ 'component_groups' ]                   ],
       [TextType.Animate            , null                       , [ 'animate' ]                            ],
+      [TextType.SoundEffect        , null                       , [ 'sound_effects' ]                      ],
     ]
 
     let type: number = -1

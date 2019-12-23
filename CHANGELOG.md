@@ -4,6 +4,10 @@ All notable changes to the "vscode-bedrock-definitions" extension will be docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.1] - 2019-10-22
+
+- Added go-to definition and auto complete for sound definitions
+
 ## [1.0.0] - 2019-09-10
 
 - Added autocomplete

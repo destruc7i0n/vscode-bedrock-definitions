@@ -385,4 +385,38 @@ export default class FileHandler {
       }
     }
   }
+
+  public async getSoundDefinitions (): Promise<filesReturnType> {
+    let getSoundDefinitionFile = await vscode.workspace.findFiles(`**/sounds/sound_definitions.json`)
+
+    let definitions = []
+    let definitionIdentifiers = []
+
+    if (getSoundDefinitionFile.length === 1) {
+      let soundDefinitionFile = getSoundDefinitionFile[0]
+      const { node, data, document } = await this.getAndParseFileContents(soundDefinitionFile)
+
+      if (node && data) {
+        const documentJSON = data
+
+        for (let definition of Object.keys(documentJSON)) {
+          let path = [ definition ]
+          const pointer = findNodeAtLocation(node, path)
+          if (pointer) {
+            definitions.push({
+              uri: soundDefinitionFile,
+              name: definition,
+              range: this.nodeToRange(document, pointer)
+            })
+            definitionIdentifiers.push(definition)
+          }
+        }
+      }
+    }
+
+    return {
+      files: definitions,
+      identifiers: definitionIdentifiers
+    }
+  }
 }

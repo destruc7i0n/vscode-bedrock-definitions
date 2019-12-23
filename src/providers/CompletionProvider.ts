@@ -4,7 +4,7 @@ import * as path from 'path'
 
 import FileHandler from '../lib/FileHandler'
 
-import SharedProvider, { TextType } from './SharedProvider'
+import SharedProvider, { TextType, FileType } from './SharedProvider'
 
 export default class BedrockCompletionProvider extends SharedProvider implements vscode.CompletionItemProvider {
   public async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
@@ -16,7 +16,9 @@ export default class BedrockCompletionProvider extends SharedProvider implements
     const { pathKeys } = this.getPathToCursor(document, position)
 
     // check that in client file, to not perform on the definition itself
-    const { isBehaviourFile, isClientFile } = this.getCurrentFileType(pathKeys)
+    const { type } = this.getCurrentFileType(pathKeys)
+    const isBehaviourFile = type === FileType.ServerDefinition
+    const isClientFile = type === FileType.ClientDefinition
 
     // only perform in these files for now
     if (!isClientFile && !isBehaviourFile) return
@@ -28,9 +30,9 @@ export default class BedrockCompletionProvider extends SharedProvider implements
     if (currWordRange && currText) {
       const { type, isPointerText } = this.getCurrentTextType(currText, parent, key, pathKeys)
 
-      const filterAndCompletion = (identifiers: Array<string>, text: string) =>
+      const filterAndCompletion = (identifiers: Array<string>) =>
         identifiers
-          .filter(i => i.startsWith(text)) // starts with
+          .filter(i => i.startsWith(currText)) // starts with
           .filter((k, i, arr) => arr.indexOf(k) === i) // remove dupes
           .map(k => this.completionItem(k, currWordRange)) // convert to completion items
 
@@ -38,10 +40,10 @@ export default class BedrockCompletionProvider extends SharedProvider implements
         if (isClientFile) {
           if (type === TextType.ClientEntityIdentifier) {
             const { identifiers: entities } = await fileHandler.getEntities('server')
-            return filterAndCompletion(entities, currText)
+            return filterAndCompletion(entities)
           } else if (type === TextType.RenderController) {
             const { identifiers: renderControllers } = await fileHandler.getByFileType('render_controllers')
-            return filterAndCompletion(renderControllers, currText)
+            return filterAndCompletion(renderControllers)
           } else if (type === TextType.Geometry) {
             let { identifiers: geometries } = await fileHandler.getGeometries()
             // remove the colons from parented models
@@ -50,13 +52,16 @@ export default class BedrockCompletionProvider extends SharedProvider implements
               ? (removeParentedColonRegex.exec(geo) as Array<string>)[1]
               : geo
             )
-            return filterAndCompletion(geometries, currText)
+            return filterAndCompletion(geometries)
           } else if (type === TextType.Particle) {
             const { identifiers: particles } = await fileHandler.getParticles()
-            return filterAndCompletion(particles, currText)
+            return filterAndCompletion(particles)
           } else if (type === TextType.Texture) {
             const textures = await this.handleTextures(document)
-            return filterAndCompletion(textures, currText)
+            return filterAndCompletion(textures)
+          } else if (type === TextType.SoundEffect) {
+            let { identifiers: soundEffects } = await fileHandler.getSoundDefinitions()
+            return filterAndCompletion(soundEffects)
           }
         }
 
@@ -64,7 +69,7 @@ export default class BedrockCompletionProvider extends SharedProvider implements
           if (type === TextType.Animation || type === TextType.AnimationController) {
             const folder = type === TextType.Animation ? 'animations' : 'animation_controllers'
             const { identifiers } = await fileHandler.getByFileType(folder)
-            return filterAndCompletion(identifiers, currText)
+            return filterAndCompletion(identifiers)
           }
         }
       }
@@ -85,6 +90,7 @@ export default class BedrockCompletionProvider extends SharedProvider implements
       const texturePath = textureFile.path
       const relativePath = path.relative(document.uri.path, texturePath)
       const pathParts = /^(.+\.\/)+(.*)\.(png|tga)$/g.exec(relativePath)
+
       if (pathParts && pathParts.length === 4) {
         const texturePath = pathParts[2]
         textures.push(texturePath)
