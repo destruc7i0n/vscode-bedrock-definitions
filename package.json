@@ -36,18 +36,11 @@
   "main": "./out/extension.js",
   "contributes": {
     "jsonValidation": [
-      {
-        "fileMatch": "/manifest.json",
-        "url": "./schemas/manifest.json"
-      },
-      {
-        "fileMatch": "/animation_controllers/*.json",
-        "url": "./schemas/animation_controller.json"
-      },
-      {
-        "fileMatch": "/*.animation_controllers.json",
-        "url": "./schemas/animation_controller.json"
-      }
+      { "fileMatch": "/manifest.json", "url": "./schemas/manifest.json" },
+      { "fileMatch": "/animation_controllers/*.json", "url": "./schemas/animation_controller.json" },
+      { "fileMatch": "/*.animation_controllers.json", "url": "./schemas/animation_controller.json" },
+      { "fileMatch": "/render_controllers/*.json", "url": "./schemas/render_controller.json" },
+      { "fileMatch": "/*.render_controllers.json", "url": "./schemas/render_controller.json" },
     ]
   },
   "scripts": {
