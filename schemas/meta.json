@@ -42,6 +42,22 @@
                 }
             ]
         },
+        "coordinates_2d": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+                "type": "number"
+            }
+        },
+        "coordinates_3d": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+                "type": "number"
+            }
+        },
         "sound_effect":{
             "description": "Valid sound effect names should be listed in the entity's resource_definition json file.",
             "type":"object",

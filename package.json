@@ -41,6 +41,8 @@
       { "fileMatch": "/*.animation_controllers.json", "url": "./schemas/animation_controller.json" },
       { "fileMatch": "/render_controllers/*.json", "url": "./schemas/render_controller.json" },
       { "fileMatch": "/*.render_controllers.json", "url": "./schemas/render_controller.json" },
+      { "fileMatch": "/mobs.json", "url": "./schemas/geometry.json" },
+      { "fileMatch": "/*.geo.json", "url": "./schemas/geometry.json" }
     ]
   },
   "scripts": {
