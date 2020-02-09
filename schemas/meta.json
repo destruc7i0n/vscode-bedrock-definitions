@@ -28,6 +28,57 @@
             "format": "uuid",
             "pattern": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
             "default": "00000000-0000-0000-0000-000000000000"
+        },
+        "molang": {
+            "oneOf": [
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                }
+            ]
+        },
+        "sound_effect":{
+            "description": "Valid sound effect names should be listed in the entity's resource_definition json file.",
+            "type":"object",
+            "properties": {
+                "effect": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "effect"
+            ],
+            "additionalProperties": false
+        },
+        "particle_effect": {
+            "type": "object",
+            "properties": {
+                "effect": {
+                    "description": "The name of a particle effect that should be played",
+                    "type": "string"
+                },
+                "locator": {
+                    "description": "The name of a locator on the actor where the effect should be located",
+                    "type": "string"
+                },
+                "pre_effect_script": {
+                    "description": "A molang script that will be run when the particle emitter is initialized",
+                    "type": "string"
+                },
+                "bind_to_actor": {
+                    "description": "Set to false to have the effect spawned in the world without being bound to an actor (by default an effect is bound to the actor).",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "effect"
+            ],
+            "additionalProperties": false
         }
     }
 }

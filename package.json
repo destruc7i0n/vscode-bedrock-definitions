@@ -37,8 +37,16 @@
   "contributes": {
     "jsonValidation": [
       {
-        "fileMatch": "manifest.json",
+        "fileMatch": "/manifest.json",
         "url": "./schemas/manifest.json"
+      },
+      {
+        "fileMatch": "/animation_controllers/*.json",
+        "url": "./schemas/animation_controller.json"
+      },
+      {
+        "fileMatch": "/*.animation_controllers.json",
+        "url": "./schemas/animation_controller.json"
       }
     ]
   },
