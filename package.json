@@ -9,8 +9,14 @@
   },
   "author": {
     "name": "destruc7i0n",
-    "e-mail": "destruc7i0n@thedestruc7i0n.ca"
+    "email": "destruc7i0n@thedestruc7i0n.ca"
   },
+  "contributors": [
+    {
+      "name": "CyberPon3",
+      "email": "cyber@code.horse"
+    }
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/destruc7i0n/vscode-bedrock-definitions"
@@ -28,7 +34,14 @@
     "onLanguage:jsonc"
   ],
   "main": "./out/extension.js",
-  "contributes": {},
+  "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": "manifest.json",
+        "url": "./schemas/manifest.json"
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "yarn run compile",
     "compile": "tsc -p ./",
