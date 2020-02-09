@@ -54,7 +54,8 @@
                                 "texture_index": {
                                     "type": "integer"
                                 }
-                            }
+                            },
+                            "additionalProperties": false
                         },
                         "scripts": {
                             "type": "object",
@@ -111,7 +112,8 @@
                                         ]
                                     }
                                 }
-                            }
+                            },
+                            "additionalProperties": false
                         },
                         "particle_effects": {
                             "type": "object",
@@ -214,7 +216,8 @@
                                 "texture_index": {
                                     "type": "integer"
                                 }
-                            }
+                            },
+                            "additionalProperties": false
                         },
                         "scripts": {
                             "type": "object",
@@ -271,7 +274,8 @@
                                         ]
                                     }
                                 }
-                            }
+                            },
+                            "additionalProperties": false
                         },
                         "particle_effects": {
                             "type": "object",

@@ -62,7 +62,8 @@
                                 "texture_index": {
                                     "type": "integer"
                                 }
-                            }
+                            },
+                            "additionalProperties": false
                         },
                         "scripts": {
                             "type": "object",
@@ -97,7 +98,8 @@
                                 "parent_setup": {
                                     "$ref": "meta.json#/definitions/molang"
                                 }
-                            }
+                            },
+                            "additionalProperties": false
                         },
                         "particle_effects": {
                             "type": "object",
