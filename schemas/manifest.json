@@ -4,7 +4,7 @@
     "title": "Manifest",
     "description": "The manifest for a Minecraft Bedrock Edition Add-On.",
     "oneOf": [
-            { "$ref": "manifest.v1.json" },
-            { "$ref": "manifest.v2.json" }
+        { "$ref": "manifest.v1.json" },
+        { "$ref": "manifest.v2.json" }
     ]
 }
