@@ -4,6 +4,15 @@ All notable changes to the "vscode-bedrock-definitions" extension will be docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.0] - 2020-x
+
+- Added document linking in mcfunction files
+  - Go to the function
+  - Go to entity defintions and particles
+- Added autocompletion in mcfunction files
+  - Autocomplete the entity, particle, or function called
+- Reorganize the codebase
+
 ## [1.0.1] - 2019-10-22
 
 - Added go-to definition and auto complete for sound definitions

@@ -1,25 +1,39 @@
 import * as vscode from 'vscode'
 
-import DefinitionProvider from './providers/DefinitionProvider'
-import CompletionProvider from './providers/CompletionProvider'
+import BedrockProvider from './Provider'
+
+const selector = [
+  { scheme: 'file', language: 'json' }, // regular json
+  { scheme: 'file', language: 'jsonc' }, // json with comments
+]
+
+const selectorMcfunction = [
+  ...selector,
+  { scheme: 'file', pattern: '**/*.mcfunction' },
+]
 
 export function activate(context: vscode.ExtensionContext) {
-  const definitionProvider = new DefinitionProvider()
-  const completionProvider = new CompletionProvider()
+  const provider = new BedrockProvider()
 
   console.log('Congratulations, your extension "vscode-bedrock-definitions" is now active!')
 
-  let disposableDefinition = vscode.languages.registerDefinitionProvider([
-    { scheme: 'file', language: 'json' }, // regular json
-    { scheme: 'file', language: 'jsonc' } // json with comments
-  ], definitionProvider)
+  let disposableDefinition = vscode.languages.registerDefinitionProvider(
+    selector,
+    provider,
+  )
 
-  let disposableCompletion = vscode.languages.registerCompletionItemProvider([
-    { scheme: 'file', language: 'json' }, // regular json
-    { scheme: 'file', language: 'jsonc' } // json with comments
-  ], completionProvider, '.', ':', '/') // activate when typing a period, colon, or forward slash
+  let disposableCompletion = vscode.languages.registerCompletionItemProvider(
+    selectorMcfunction,
+    provider,
+    '.', ':', '/' // activate when typing a period, colon, or forward slash
+  )
 
-  context.subscriptions.push(disposableDefinition, disposableCompletion)
+  let disposableLink = vscode.languages.registerDocumentLinkProvider(
+    selectorMcfunction,
+    provider
+  )
+
+  context.subscriptions.push(disposableDefinition, disposableCompletion, disposableLink)
 }
 
 export function deactivate() {}

@@ -4,48 +4,90 @@ import * as path from 'path'
 
 import { findNodeAtLocation, parseTree, parse, Node } from 'jsonc-parser'
 
-type files = {
-  uri: vscode.Uri;
-  name: string;
-  range?: vscode.Range;
-}
-type filesReturnType = {
-  files: Array<files>;
-  identifiers: Array<string>;
+/**
+ * The various types of files
+ */
+
+export enum FileType {
+  None,
+  AnimationController,
+  Animation,
+  RenderController,
+  Geometry,
+  Material,
+  Particle,
+  Texture,
+  ClientEntityIdentifier,
+  ServerEntityIdentifier,
+  EventIdentifier,
+  ComponentGroup,
+  Animate,
+  SoundEffect,
+
+  McFunction,
 }
 
-interface descriptionObject {
+export type EntityFileType = FileType.ServerEntityIdentifier | FileType.ClientEntityIdentifier
+type SimilarFormatFileTypes = FileType.Material | FileType.Animation | FileType.AnimationController | FileType.RenderController | FileType.Particle | FileType.SoundEffect
+
+export enum BehaviourDefinitionType {
+  Events,
+  ComponentGroups,
+}
+
+export type FileData = {
+  uri: vscode.Uri
+  name: string
+  range: vscode.Range
+}
+
+export type FilesSearchResponse = {
+  files: FileData[]
+  identifiers: string[]
+}
+
+interface DescriptionObject {
   description: {
     identifier: string
   }
 }
 
-interface baseFile {
-  format_version: string;
+interface BaseFile {
+  format_version: string
 }
 
-interface geometryFile extends baseFile {
+interface GeometryFile extends BaseFile {
   // 1.12 format
-  'minecraft:geometry': Array<descriptionObject>;
+  'minecraft:geometry': DescriptionObject[]
   // 1.8 format
-  [key: string]: string | Array<object> | {
-    [key: string]: object;
-  };
+  [key: string]: string | object[] | {
+    [key: string]: object
+  }
 }
 
-interface particleFile extends baseFile {
-  particle_effect: descriptionObject
+interface ParticleFile extends BaseFile {
+  particle_effect: DescriptionObject
 }
 
-export type validPrefixStrings = 'render_controllers' | 'animations' | 'animation_controllers' | 'materials'
-type multiFileType = baseFile & {
-  [key in validPrefixStrings]: {
-    [key: string]: any;
-  };
+type MultiFileType = BaseFile & {
+  [key: string]: {
+    [key: string]: any
+  }
 }
 
-type entityDefinitionFile = baseFile & {
-  [key in 'minecraft:client_entity' | 'minecraft:entity']: descriptionObject;
+type EntityDefinitionFile = BaseFile & {
+  [key in 'minecraft:client_entity' | 'minecraft:entity']: DescriptionObject
+}
+
+interface BehaviourEntity {
+  'minecraft:entity': {
+    events: {
+      [key: string]: object;
+    };
+    component_groups: {
+      [key: string]: object;
+    }
+  }
 }
 
 export default class FileHandler {
@@ -60,7 +102,7 @@ export default class FileHandler {
    * @param document the document
    * @param node the node
    */
-  public nodeToRange (document: vscode.TextDocument, node: Node): vscode.Range {
+  private nodeToRange (document: vscode.TextDocument, node: Node): vscode.Range {
     const offset = node!.offset
     const start = document.positionAt(offset + 1)
     const end = document.positionAt(offset + (node!.length - 1))
@@ -97,7 +139,7 @@ export default class FileHandler {
    * Verify that there is a description and identifier on an object
    * @param description The description object to verify
    */
-  private verifyDescriptionIdentifier (description: descriptionObject) {
+  private verifyDescriptionIdentifier (description: DescriptionObject) {
     return description['description'] && description['description']['identifier']
   }
 
@@ -105,7 +147,7 @@ export default class FileHandler {
    * Open and parse (with source-maps) the file specified
    * @param file the file to parse
    */
-  public async getAndParseFileContents (file: vscode.Uri): Promise<{node: Node | null, data: any, document: vscode.TextDocument}> {
+  private async getAndParseFileContents (file: vscode.Uri): Promise<{node: Node | null, data: any, document: vscode.TextDocument}> {
     const document = await vscode.workspace.openTextDocument(file)
     const textContent = document.getText()
 
@@ -125,9 +167,40 @@ export default class FileHandler {
   } 
 
   /**
+   * Get a range in the current document of a behaviour definition
+   * @param key the key to get from under
+   * @param definition the definition to get
+   */
+  public async getBehaviourDefinitionInCurrentFile (key: BehaviourDefinitionType, definition: string): Promise<FileData | undefined> {
+    const { node, data } = await this.getAndParseFileContents(this.document.uri)
+
+    const keyName = key === BehaviourDefinitionType.Events ? 'events' : 'component_groups'
+
+    if (node && data) {
+      const documentJSON: BehaviourEntity = data
+  
+      if (documentJSON['minecraft:entity']) {
+        if (documentJSON['minecraft:entity'][keyName]) {
+          if (documentJSON['minecraft:entity'][keyName][definition]) {
+            const path = [ 'minecraft:entity', keyName, definition ]
+            const pointer = findNodeAtLocation(node, path)
+            if (pointer) {
+              return {
+                uri: this.document.uri,
+                name: definition,
+                range: this.nodeToRange(this.document, pointer)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Get the geometry identifiers, following both 1.8 and 1.12 schemas
    */
-  public async getGeometries (): Promise<filesReturnType> {
+  public async getGeometries (): Promise<FilesSearchResponse> {
     const geometryFiles = await this.getFilesFromGlob('**/models/**/*.json')
 
     let geometries = []
@@ -136,7 +209,7 @@ export default class FileHandler {
     for (let geometryFile of geometryFiles) {
       const { node, data, document } = await this.getAndParseFileContents(geometryFile)
       if (node && data) {
-        const documentJSON: geometryFile = data
+        const documentJSON: GeometryFile = data
 
         const formatVersion = documentJSON['format_version']
         if (formatVersion) {
@@ -195,7 +268,7 @@ export default class FileHandler {
   /**
    * Get the particle identifiers
    */
-  public async getParticles (): Promise<filesReturnType> {
+  public async getParticles (): Promise<FilesSearchResponse> {
     const particleFiles = await this.getFilesFromGlob('**/particles/**/*.json')
 
     let particles = []
@@ -204,7 +277,7 @@ export default class FileHandler {
     for (let particleFile of particleFiles) {
       const { node, data, document } = await this.getAndParseFileContents(particleFile)
       if (node && data) {
-        const documentJSON: particleFile = data
+        const documentJSON: ParticleFile = data
 
         if (documentJSON['particle_effect']) {
           const identifier = this.verifyDescriptionIdentifier(documentJSON['particle_effect'])
@@ -234,10 +307,21 @@ export default class FileHandler {
    * Get the identifiers from files following the same style
    * @param type the type of file to get the identifiers from
    */
-  public async getByFileType (type: validPrefixStrings): Promise<filesReturnType> {
-    let fileType = 'json'
-    if (type === 'materials') fileType = 'material'
-    const files = await this.getFilesFromGlob(`**/${type}/**/*.${fileType}`)
+  public async getByFileType (type: SimilarFormatFileTypes): Promise<FilesSearchResponse> {
+    let fileExtension = 'json'
+    if (type === FileType.Material) fileExtension = 'material'
+
+    const rootKeys = {
+      [FileType.Material]: 'materials',
+      [FileType.Animation]: 'animations',
+      [FileType.AnimationController]: 'animation_controllers',
+      [FileType.RenderController]: 'render_controllers',
+      [FileType.Particle]: 'particles',
+      [FileType.SoundEffect]: 'sound_definition',
+    }
+    const rootKey = rootKeys[type]
+
+    const files = await this.getFilesFromGlob(`**/${rootKey}/**/*.${fileExtension}`)
 
     let returnFiles = []
     let returnIdentifiers = []
@@ -245,13 +329,13 @@ export default class FileHandler {
     for (let file of files) {
       const { node, data, document } = await this.getAndParseFileContents(file)
       if (node && data) {
-        const documentJSON: multiFileType = data
+        const documentJSON: MultiFileType = data
 
-        if (documentJSON[type]) {
-          const identifiers = Object.keys(documentJSON[type])
+        if (documentJSON[rootKey]) {
+          const identifiers = Object.keys(documentJSON[rootKey])
 
           for (let identifier of identifiers) {
-            const path = [ type, identifier ]
+            const path = [ rootKey, identifier ]
             const pointer = findNodeAtLocation(node, path)
             if (pointer) {
               returnFiles.push({
@@ -276,9 +360,9 @@ export default class FileHandler {
    * Get all entity identifiers from the end specified
    * @param type from which end to attempt to get the entities from
    */
-  public async getEntities (type: 'client' | 'server'): Promise<filesReturnType> {
-    const entityFileType = type === 'client' ? 'minecraft:client_entity' : 'minecraft:entity'
-    const folder = entityFileType === 'minecraft:client_entity' ? 'entity' : 'entities'
+  public async getEntities (type: EntityFileType): Promise<FilesSearchResponse> {
+    const entityFileType = type === FileType.ClientEntityIdentifier ? 'minecraft:client_entity' : 'minecraft:entity'
+    const folder = type === FileType.ClientEntityIdentifier ? 'entity' : 'entities'
 
     const entityFiles = await this.getFilesFromGlob(`**/${folder}/**/*.json`)
 
@@ -288,7 +372,7 @@ export default class FileHandler {
     for (let entityFile of entityFiles) {
       const { node, data, document } = await this.getAndParseFileContents(entityFile)
       if (node && data) {
-        const documentJSON: entityDefinitionFile = data
+        const documentJSON: EntityDefinitionFile = data
 
         if (documentJSON[entityFileType]) {
           if (this.verifyDescriptionIdentifier(documentJSON[entityFileType])) {
@@ -320,7 +404,7 @@ export default class FileHandler {
    * Get all the animations from the document provided
    * @param document the document to get the animations from
    */
-  public async getAnimations (document: vscode.TextDocument): Promise<filesReturnType> {
+  public async getAnimations (document: vscode.TextDocument): Promise<FilesSearchResponse> {
     const { node, data } = await this.getAndParseFileContents(document.uri)
 
     let animations = []
@@ -373,20 +457,24 @@ export default class FileHandler {
    * Get a texture from the string specified
    * @param path the path from which to get the texture from
    */
-  public async getTexture (path: string): Promise<files | undefined> {
+  public async getTexture (path: string): Promise<FileData | undefined> {
     const textures = await vscode.workspace.findFiles(`**/${path}.{png,tga}`)
 
     if (textures) {
       if (textures[0]) {
         return {
           uri: textures[0],
-          name: path
+          name: path,
+          range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
         }
       }
     }
   }
 
-  public async getSoundDefinitions (): Promise<filesReturnType> {
+  /**
+   * Get the sound definitions
+   */
+  public async getSoundDefinitions (): Promise<FilesSearchResponse> {
     let getSoundDefinitionFile = await vscode.workspace.findFiles(`**/sounds/sound_definitions.json`)
 
     let definitions = []

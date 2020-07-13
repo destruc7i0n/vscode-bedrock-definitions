@@ -1,9 +1,9 @@
 {
   "name": "vscode-bedrock-definitions",
   "displayName": "Bedrock Definitions",
-  "description": "Go-to Bedrock definitions and auto-complete for Visual Studio Code",
+  "description": "Go-to definitions and auto-complete for Minecraft Bedrock Edition",
   "icon": "icon.png",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "engines": {
     "vscode": "^1.22.0"
   },
@@ -11,12 +11,6 @@
     "name": "destruc7i0n",
     "email": "destruc7i0n@thedestruc7i0n.ca"
   },
-  "contributors": [
-    {
-      "name": "CyberPon3",
-      "email": "cyber@code.horse"
-    }
-  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/destruc7i0n/vscode-bedrock-definitions"
@@ -31,25 +25,12 @@
   ],
   "activationEvents": [
     "onLanguage:json",
-    "onLanguage:jsonc"
+    "onLanguage:jsonc",
+    "workspaceContains:**/*.mcfunction"
   ],
   "main": "./out/extension.js",
-  "contributes": {
-    "jsonValidation": [
-      { "fileMatch": "/manifest.json", "url": "./schemas/manifest.json" },
-      { "fileMatch": "/animation_controllers/*.json", "url": "./schemas/animation_controller.json" },
-      { "fileMatch": "/*.animation_controllers.json", "url": "./schemas/animation_controller.json" },
-      { "fileMatch": "/render_controllers/*.json", "url": "./schemas/render_controller.json" },
-      { "fileMatch": "/*.render_controllers.json", "url": "./schemas/render_controller.json" },
-      { "fileMatch": "/mobs.json", "url": "./schemas/geometry.json" },
-      { "fileMatch": "/*.geo.json", "url": "./schemas/geometry.json" },
-      { "fileMatch": "/animations/*.json", "url": "./schemas/animation.json" },
-      { "fileMatch": "/*.animation.json", "url": "./schemas/animation.json" },
-      { "fileMatch": "/*.entity.json", "url": "./schemas/actor_resource_definition.json" },
-      { "fileMatch": "/attachables/*.json", "url": "./schemas/actor_resource_definition.json" }
-    ]
-  },
   "scripts": {
+    "package": "vsce package",
     "vscode:prepublish": "yarn run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
@@ -57,12 +38,12 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/glob": "^7.1.1",
-    "@types/mocha": "^5.2.6",
-    "@types/node": "^12.12.21",
+    "@types/glob": "^7.1.3",
+    "@types/mocha": "^8.0.0",
+    "@types/node": "^14.0.23",
     "glob": "^7.1.6",
-    "mocha": "^6.2.2",
-    "tslint": "^5.20.1",
+    "mocha": "^8.0.1",
+    "tslint": "^6.1.2",
     "typescript": "^3.7.4",
     "vscode": "^1.1.36",
     "vscode-test": "^1.3.0"
