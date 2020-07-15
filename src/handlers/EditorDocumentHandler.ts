@@ -120,6 +120,7 @@ class EditorDocumentHandler {
         'animation_controllers': FileType.AnimationController,
         'render_controllers': FileType.RenderController,
         'particle_effect': FileType.Particle,
+        'sound_definition': FileType.SoundEffect,
       }
 
       for (let pathRoot of Object.keys(pathRoots)) {

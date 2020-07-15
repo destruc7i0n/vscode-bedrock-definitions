@@ -233,7 +233,7 @@ export default class FileHandler {
                 }
               }
             } else {
-              // 1.12.0 format
+              // 1.12.0+ format
               if (documentJSON['minecraft:geometry']) {
                 const documentGeometries = documentJSON['minecraft:geometry']
                 for (let i = 0; i < documentGeometries.length; i++) {

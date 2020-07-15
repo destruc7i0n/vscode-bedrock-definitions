@@ -4,7 +4,6 @@ class ResponseCache {
   private map: { [key in FileType]?: FilesSearchResponse } = {}
 
   public emptyCache () {
-    // console.log('emptying cache')
     this.map = {}
   }
 
@@ -19,12 +18,10 @@ class ResponseCache {
   }
 
   public fromCache(type: FileType) {
-    // console.log('fetching', type, 'from cache')
     return this.map[type] as FilesSearchResponse
   }
 
   public setCache (type: FileType, data: FilesSearchResponse) {
-    // console.log('setting', type, 'to cache')
     this.map[type] = data
   }
 }
