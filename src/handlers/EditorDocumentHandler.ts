@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import FileSearcher from '../lib/FileSearcher'
+import FileHandler from './FileHandler'
 import Selection from '../lib/Selection'
 import ResponseCache from '../lib/ResponseCache'
 import { cleanJson } from '../lib/util'
@@ -8,18 +8,22 @@ import { cleanJson } from '../lib/util'
 import { FileType } from '../handlers/FileHandler'
 
 class EditorDocumentHandler {
-  public fileSearcher: FileSearcher
+  private document: vscode.TextDocument
+
+  public fileHandler: FileHandler
   public type: FileType = FileType.None
   public selection: Selection | null
 
   private cache: ResponseCache
 
-  constructor (document: vscode.TextDocument, position: vscode.Position | null, cache: ResponseCache, hasSelection: boolean) {
+  constructor (document: vscode.TextDocument, position: vscode.Position | null, cache: ResponseCache, hasSelection: boolean = true) {
+    this.document = document
+
     this.selection = hasSelection && position ? new Selection(document, position) : null
     this.type = this.getDocumentType(document)
 
     this.cache = cache
-    this.fileSearcher = new FileSearcher(document, this.cache)
+    this.fileHandler = new FileHandler(this.cache)
   }
 
   public setSelectionType (type: FileType) {
@@ -48,11 +52,19 @@ class EditorDocumentHandler {
   }
 
   /**
+   * Purges the cache of the current document type
+   */
+  public purgeCacheByDocumentType () {
+    this.cache.purgeAllByType(this.type)
+  }
+
+  /**
    * Wrapper around the file searcher
    * @param type the type to search for
+   * @param uri optional uri
    */
-  public async findAllOfType (type: FileType) {
-    return await this.fileSearcher.findByType(type)
+  public async findAllOfType (type: FileType, uri?: vscode.Uri) {
+    return await this.fileHandler.findByType(type, uri)
   }
 
   /**
@@ -71,7 +83,7 @@ class EditorDocumentHandler {
     const selectionType = this.getSelectionType()
     const selectionText = this.getSelectionText()
     if (!selectionType || !selectionText) return
-    return this.fileSearcher.findByIndentifier(selectionType, selectionText)
+    return this.fileHandler.findByIndentifier(selectionType, selectionText)
   }
 
   /**
@@ -98,6 +110,13 @@ class EditorDocumentHandler {
   }
 
   /**
+   * Refresh the current document cache
+   */
+  public refreshCurrentDocument () {
+    this.fileHandler.findByType(this.type, this.document.uri, true)
+  }
+
+  /**
    * Determines the file type of the JSON file specified
    */
   private getDocumentType (document: vscode.TextDocument) {
@@ -120,7 +139,7 @@ class EditorDocumentHandler {
         'animation_controllers': FileType.AnimationController,
         'render_controllers': FileType.RenderController,
         'particle_effect': FileType.Particle,
-        'sound_definition': FileType.SoundEffect,
+        'sound_definitions': FileType.SoundEffect,
       }
 
       for (let pathRoot of Object.keys(pathRoots)) {

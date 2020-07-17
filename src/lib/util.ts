@@ -1,5 +1,7 @@
 import * as vscode from 'vscode'
 
+import { Node } from 'jsonc-parser'
+
 function getCompletionItem (text: string, range: vscode.Range, description?: string, insertText?: string): vscode.CompletionItem {
   const item = new vscode.CompletionItem(text)
   item.kind = vscode.CompletionItemKind.Value
@@ -32,4 +34,16 @@ function cleanJson (data: string) {
   } catch (e) {}
 }
 
-export { getCompletionItem, cleanJson, getDocumentLink }
+/**
+ * Converts the node to a range
+ * @param node the node
+ * @param document the document
+ */
+function nodeToRange (node: Node, document: vscode.TextDocument): vscode.Range {
+  const offset = node.offset
+  const start = document.positionAt(offset + 1)
+  const end = document.positionAt(offset + (node.length - 1))
+  return new vscode.Range(start, end)
+}
+
+export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange }

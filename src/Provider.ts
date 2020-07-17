@@ -1,36 +1,43 @@
 import * as vscode from 'vscode'
 
 import EditorDocumentHandler from './handlers/EditorDocumentHandler'
-import { FileData, FileType, BehaviourDefinitionType } from './handlers/FileHandler'
+import FileHandler, { FileData, FileType, BehaviourDefinitionType } from './handlers/FileHandler'
 import CommandHandler from './handlers/CommandHandler'
 
 import ResponseCache from './lib/ResponseCache'
 
 import { getCompletionItem } from './lib/util'
+import { ServerEntityDefinitionFile } from './files'
 
 export default class BedrockProvider implements vscode.DefinitionProvider, vscode.CompletionItemProvider, vscode.DocumentLinkProvider {
   private static cache = new ResponseCache()
 
-  private document: vscode.TextDocument | null = null
+  /**
+   * Purge the inner cache
+   */
+  public async purgeCache () {
+    console.log('Clearing cache of all resource files...')
+    BedrockProvider.cache.emptyCache()
+  }
 
   /**
-   * Checks if the document has changed from the last one being edited
-   * Flushes cache if file has changed
-   * @param document the document to check with
+   * Whenever a document is saved
    */
-  private checkForDocumentChange (document: vscode.TextDocument) {
-    const documentsAreEqual = this.document && document.fileName === this.document.fileName
-    // empty the cache per file on document change
-    if (!documentsAreEqual) {
-      BedrockProvider.cache.emptyCache()
-      this.document = document
-    }
+  public onDocumentSaved () {
+    const disposable = vscode.workspace.onDidSaveTextDocument((document) => {
+      const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.cache)
+      if (documentHandler.isResourceDocument()) {
+        console.log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
+        // documentHandler.purgeCacheByDocumentType()
+        documentHandler.refreshCurrentDocument()
+      }
+    })
+    return disposable
   }
 
   public async provideDefinition (document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Location | undefined> {
-    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.cache, true)
+    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.cache)
 
-    if (documentHandler.isResourceDocument()) this.checkForDocumentChange(document)
     if (!documentHandler.shouldHandleSelection()) return
 
     let file: FileData | undefined = undefined
@@ -45,7 +52,7 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       // jumping to the texture file
       switch (selectionType) {
         case FileType.Texture: {
-          const texture = await documentHandler.fileSearcher.fileHandler.getTexture(selectionText)
+          const texture = await documentHandler.fileHandler.getTexture(selectionText)
           if (texture) return new vscode.Location(texture.uri, new vscode.Position(0, 0))
           break
         }
@@ -57,18 +64,19 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
         default: break
       }
     } else if (documentHandler.type === FileType.ServerEntityIdentifier) {
-      const fileHandler = documentHandler.fileSearcher.fileHandler
       // jumping to the behaviour definitions
       switch (selectionType) {
         // go from event call to the event being called
         case FileType.EventIdentifier: {
-          file = await fileHandler.getBehaviourDefinitionInCurrentFile(BehaviourDefinitionType.Events, selectionText)
+          let fileHandler = new ServerEntityDefinitionFile()
+          file = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.Events, selectionText)
           break
         }
         // want to jump to component group modified
         case FileType.ComponentGroup: {
           if (documentHandler.selection && documentHandler.selection.path.includes('events')) {
-            file = await fileHandler.getBehaviourDefinitionInCurrentFile(BehaviourDefinitionType.ComponentGroups, selectionText)
+            let fileHandler = new ServerEntityDefinitionFile()
+            file = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.ComponentGroups, selectionText)
           }
           break
         }
@@ -91,17 +99,15 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
   }
 
   public async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | undefined> {
-    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.cache, true)
-    if (documentHandler.isResourceDocument()) this.checkForDocumentChange(document)
+    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.cache)
 
     const commandHandler = new CommandHandler(document)
 
     if (documentHandler.shouldHandleCommandCalls()) {
-      const items = await commandHandler.getCompletionItems(position, documentHandler.fileSearcher)
+      const items = await commandHandler.getCompletionItems(position, documentHandler.fileHandler)
       return items
     } else if (documentHandler.shouldHandleSelection()) {
       const selectionRange = documentHandler.getSelectionRange()
-  
       const completions = await documentHandler.getAllOfSelectionType()
       if (completions && selectionRange)
         return completions.identifiers.map((id) => getCompletionItem(id, selectionRange))
@@ -111,10 +117,9 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
   public async provideDocumentLinks (document: vscode.TextDocument): Promise<vscode.DocumentLink[] | undefined> {
     const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.cache, false)
 
-    if (documentHandler.isResourceDocument()) this.checkForDocumentChange(document)
     if (!documentHandler.shouldHandleCommandCalls()) return
 
     const commandHandler = new CommandHandler(document)
-    return commandHandler.getLinks(documentHandler.fileSearcher)
+    return commandHandler.getLinks(documentHandler.fileHandler)
   }
 }

@@ -26,9 +26,18 @@
   "activationEvents": [
     "onLanguage:json",
     "onLanguage:jsonc",
-    "workspaceContains:**/*.mcfunction"
+    "workspaceContains:**/*.mcfunction",
+    "onCommand:bedrock-definitions.refreshCache"
   ],
   "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bedrock-definitions.refreshCache",
+        "title": "Bedrock Definitions: Refresh Cache"
+      }
+    ]
+  },
   "scripts": {
     "package": "vsce package",
     "vscode:prepublish": "yarn run compile",

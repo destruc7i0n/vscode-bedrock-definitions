@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import FileSearcher from '../lib/FileSearcher'
+import FileSearcher from './FileHandler'
 
 import { FileType } from '../handlers/FileHandler'
 
