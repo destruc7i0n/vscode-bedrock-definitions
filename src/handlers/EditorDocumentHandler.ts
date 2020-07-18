@@ -110,7 +110,7 @@ class EditorDocumentHandler {
   }
 
   /**
-   * Refresh the current document cache
+   * Refresh the current document in the cache
    */
   public refreshCurrentDocument () {
     this.fileHandler.findByType(this.type, this.document.uri, true)

@@ -2,10 +2,13 @@ import * as vscode from 'vscode'
 
 import { FileData, FilesSearchResponse, FileType } from '../handlers/FileHandler'
 
+import { Mutex } from 'async-mutex'
+
 type FileTypeByPath = { [key: string]: { identifier: string, file: FileData }[] }
 
 class ResponseCache {
   private map: { [key in FileType]?: FileTypeByPath } = {}
+  private mutexes: { [key in FileType]?: Mutex } = {}
 
   public emptyCache () {
     // console.log('emptying cache')
@@ -18,11 +21,28 @@ class ResponseCache {
     }
   }
 
+  /**
+   * Acquire a mutex for a file type
+   * @param type the type of which to acquire the mutex for
+   */
+  public async acquireMutex (type: FileType) {
+    if (!this.mutexes[type]) this.mutexes[type] = new Mutex()
+
+    return await this.mutexes[type]!.acquire()
+  }
+ 
   public async setOrGetFromCache(type: FileType, fn: () => Promise<FilesSearchResponse>, uri?: vscode.Uri, overwrite?: boolean) {
+    // for this bulk function, a mutex is used to prevent multiple requests at the same time
+    const release = await this.acquireMutex(type)
+
     const path = uri?.path
+
     if (!this.checkCache(type, path) || overwrite) {
       this.setCache(type, await fn(), uri)
     }
+
+    release()
+
     return this.fromCache(type, path)
   }
 

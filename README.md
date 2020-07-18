@@ -3,6 +3,9 @@
 Go-to Bedrock definitions and auto-complete for Visual Studio Code
 
 ## What does it do?
+![definitions](https://raw.githubusercontent.com/destruc7i0n/vscode-bedrock-definitions/master/img/preview1.gif)
+![functions](https://raw.githubusercontent.com/destruc7i0n/vscode-bedrock-definitions/master/img/preview2.gif)
+
 [Video of go-to definition in action](https://streamable.com/k3bel)
 
 ## Features
@@ -47,11 +50,22 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
 
 ## Help
 
-You can view the documentation at https://bedrock.dev
+You can view the Minecraft documentation at https://bedrock.dev
+
+## Troubleshooting
+
+**The wrong definition is showing**
+
+If you have changed identifiers and they are not being presented to you as definitions etc, save the file which you are editing and try again.
+
+**A lot of definitions/auto completions are incorrect**
+
+You may have done a lot of changes to the structure of your project. 
+Open the Command Palette (Ctrl+Shift+P) and enter `bedrock definitions`. Select `Bedrock Definitions: Refresh Cache`.
 
 ## Known Issues
 
-- This will get the first file which has the definition and take you there, so it may not always go to the proper file if there are multiple with the same definition
+- The file you are taken to may not be the desired file
 
 ## Development
 

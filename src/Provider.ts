@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 
 import EditorDocumentHandler from './handlers/EditorDocumentHandler'
-import FileHandler, { FileData, FileType, BehaviourDefinitionType } from './handlers/FileHandler'
+import { FileData, FileType, BehaviourDefinitionType } from './handlers/FileHandler'
 import CommandHandler from './handlers/CommandHandler'
 
 import ResponseCache from './lib/ResponseCache'
@@ -24,7 +24,7 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
    * Whenever a document is saved
    */
   public onDocumentSaved () {
-    const disposable = vscode.workspace.onDidSaveTextDocument((document) => {
+    const disposableSave = vscode.workspace.onDidSaveTextDocument((document) => {
       const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.cache)
       if (documentHandler.isResourceDocument()) {
         console.log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
@@ -32,7 +32,8 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
         documentHandler.refreshCurrentDocument()
       }
     })
-    return disposable
+
+    return disposableSave
   }
 
   public async provideDefinition (document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Location | undefined> {

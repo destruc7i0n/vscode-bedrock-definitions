@@ -134,7 +134,7 @@ class FileHandler {
       case FileType.RenderController: {
         files = await this.cache.setOrGetFromCache(
           type, 
-          () => this.getByFileType(type, uri),
+          async () => this.getByFileType(type, uri),
           uri,
           overwrite,
         )
