@@ -2,12 +2,6 @@
 
 Go-to Bedrock definitions and auto-complete for Visual Studio Code
 
-## What does it do?
-![definitions](https://raw.githubusercontent.com/destruc7i0n/vscode-bedrock-definitions/master/img/preview1.gif)
-![functions](https://raw.githubusercontent.com/destruc7i0n/vscode-bedrock-definitions/master/img/preview2.gif)
-
-[Video of go-to definition in action](https://streamable.com/k3bel)
-
 ## Features
 
 - Ctrl (or Cmd on macOS) and hover over definitions to preview the definition in the file
@@ -23,10 +17,8 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
     - Particle Effects
     - Materials
     - Animations / Animation Controllers
-    - scripts/animate (go to definition in same file)
   - Server (Behaviour) definitions 
     - Animations / Animation Controllers
-    - scripts/animate (go to definition in same file)
     - Events (go to the event from the usage in the file)
     - Component Groups (go to component groups from the usage in events)
   - mcfunction files
@@ -47,6 +39,18 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
     - Particles and entities
 
 <sub><sup>*If the behaviour pack counterpart is open in the workspace</sup></sub>
+
+## What can it do?
+<details>
+  <summary>Jump to Definition</summary>
+  <img src="https://raw.githubusercontent.com/destruc7i0n/vscode-bedrock-definitions/master/img/preview1.gif" />
+  <a href="https://streamable.com/k3bel">Longer video example</a>
+</details>
+<hr />
+<details>
+  <summary>Autocomplete</summary>
+  <img src="https://raw.githubusercontent.com/destruc7i0n/vscode-bedrock-definitions/master/img/preview2.gif" />
+</details>
 
 ## Help
 

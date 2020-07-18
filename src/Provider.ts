@@ -6,7 +6,7 @@ import CommandHandler from './handlers/CommandHandler'
 
 import ResponseCache from './lib/ResponseCache'
 
-import { getCompletionItem } from './lib/util'
+import { getCompletionItem, log } from './lib/util'
 import { ServerEntityDefinitionFile } from './files'
 
 export default class BedrockProvider implements vscode.DefinitionProvider, vscode.CompletionItemProvider, vscode.DocumentLinkProvider {
@@ -16,24 +16,33 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
    * Purge the inner cache
    */
   public async purgeCache () {
-    console.log('Clearing cache of all resource files...')
+    log('Clearing cache of all resource files...')
     BedrockProvider.cache.emptyCache()
   }
 
   /**
    * Whenever a document is saved
    */
-  public onDocumentSaved () {
+  public documentDisposables () {
     const disposableSave = vscode.workspace.onDidSaveTextDocument((document) => {
       const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.cache)
       if (documentHandler.isResourceDocument()) {
-        console.log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
+        log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
         // documentHandler.purgeCacheByDocumentType()
         documentHandler.refreshCurrentDocument()
       }
     })
 
-    return disposableSave
+    const logEmptyCacheReason = (action: string) => () => {
+      log(`File has been ${action}, clearing cache of all resource files...`)
+      BedrockProvider.cache.emptyCache()
+    }
+
+    // on deletion and renaming just empty the cache for now
+    const disposableDelete = vscode.workspace.onDidDeleteFiles(logEmptyCacheReason('deleted'))
+    const disposableRename = vscode.workspace.onDidRenameFiles(logEmptyCacheReason('renamed'))
+
+    return [disposableSave, disposableDelete, disposableRename]
   }
 
   public async provideDefinition (document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Location | undefined> {

@@ -55,11 +55,11 @@ export async function activate(context: vscode.ExtensionContext) {
     provider
   )
 
-  const disposableSave = provider.onDocumentSaved()
+  const documentDisposables = provider.documentDisposables()
 
   const disposableCommand = vscode.commands.registerCommand('bedrock-definitions.refreshCache', () => provider.purgeCache())
 
-  context.subscriptions.push(disposableDefinition, disposableCompletion, disposableLink, disposableSave, disposableCommand)
+  context.subscriptions.push(disposableDefinition, disposableCompletion, disposableLink, ...documentDisposables, disposableCommand)
 }
 
 export function deactivate() {}

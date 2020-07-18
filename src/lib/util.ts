@@ -46,4 +46,12 @@ function nodeToRange (node: Node, document: vscode.TextDocument): vscode.Range {
   return new vscode.Range(start, end)
 }
 
-export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange }
+/**
+ * Basic logger
+ * @param args to log
+ */
+function log (...args: any) {
+  console.log('[Bedrock Definitions]', ...args)
+}
+
+export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange, log }
