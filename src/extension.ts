@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 import BedrockProvider from './Provider'
 
-import { cleanJson } from './lib/util'
+import { cleanJson, log } from './lib/util'
 
 const selector = [
   { scheme: 'file', language: 'json' }, // regular json
@@ -30,12 +30,12 @@ async function isBedrockWorkspace () {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log('Congratulations, your extension "vscode-bedrock-definitions" is now active!')
-
   // only enable if bedrock workspace
   if (!(await isBedrockWorkspace())) {
-    console.log('Could not find a `manifest.json`. Bedrock Definitions\' functionality has been disabled.')
+    log('Could not find a `manifest.json`. Bedrock Definitions\' functionality has been disabled.')
   }
+
+  log('Now active')
 
   const provider = new BedrockProvider()
 

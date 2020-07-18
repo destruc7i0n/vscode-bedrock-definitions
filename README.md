@@ -65,7 +65,8 @@ If you have changed identifiers and they are not being presented to you as defin
 **A lot of definitions/auto completions are incorrect**
 
 You may have done a lot of changes to the structure of your project. 
-Open the Command Palette (Ctrl+Shift+P) and enter `bedrock definitions`. Select `Bedrock Definitions: Refresh Cache`.
+Open the Command Palette (`Ctrl+Shift+P`) and enter `bedrock definitions`.
+Select `Bedrock Definitions: Refresh Cache`.
 
 ## Known Issues
 
