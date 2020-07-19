@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 import { Node } from 'jsonc-parser'
 
-import { FilesSearchResponse, FileType } from '../handlers/FileHandler'
+import { Data, FileType } from '../handlers/FileHandler'
 import { ResourceFile, DescriptionObject } from './ResourceFile'
 
 interface DescriptionFileType {
@@ -13,18 +13,17 @@ abstract class DescriptionBasedFile extends ResourceFile {
   public abstract type: FileType
   protected abstract root: string
 
-  extract (document: vscode.TextDocument, node: Node, content: DescriptionFileType) {
-    let response: FilesSearchResponse = { files: [], identifiers: [] }
+  extractIdentifiers (document: vscode.TextDocument, node: Node, content: DescriptionFileType): Data {
+    let response: Data = new Map()
 
     if (content[this.root]) {
       const identifier = this.verifyDescriptionIdentifier(content[this.root])
       if (identifier) {
         const path = [ this.root ]
 
-        const fileData = this.getFileData(node, path, document, identifier)
-        if (fileData) {
-          response.files.push(fileData)
-          response.identifiers.push(identifier)
+        const range = this.getRangeFromPath(node, path, document)
+        if (range) {
+          response.set(identifier, { range })
         }
       }
     }

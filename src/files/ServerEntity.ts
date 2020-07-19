@@ -40,7 +40,7 @@ class ServerEntityFile extends DescriptionBasedFile {
         if (documentJSON['minecraft:entity'][keyName]) {
           if (documentJSON['minecraft:entity'][keyName][definition]) {
             const path = [ 'minecraft:entity', keyName, definition ]
-            return this.getFileData(node, path, document, definition)
+            return this.getRangeFromPath(node, path, document)
           }
         }
       }

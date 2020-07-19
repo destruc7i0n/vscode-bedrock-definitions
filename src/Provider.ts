@@ -1,23 +1,21 @@
 import * as vscode from 'vscode'
 
 import EditorDocumentHandler from './handlers/EditorDocumentHandler'
-import { FileData, FileType, BehaviourDefinitionType } from './handlers/FileHandler'
+import FileHandler, { FileType, BehaviourDefinitionType, LocationData } from './handlers/FileHandler'
 import CommandHandler from './handlers/CommandHandler'
-
-import ResponseCache from './lib/ResponseCache'
 
 import { getCompletionItem, log } from './lib/util'
 import { ServerEntityDefinitionFile } from './files'
 
 export default class BedrockProvider implements vscode.DefinitionProvider, vscode.CompletionItemProvider, vscode.DocumentLinkProvider {
-  private static cache = new ResponseCache()
+  private static fileHandler = new FileHandler()
 
   /**
    * Purge the inner cache
    */
   public async purgeCache () {
     log('Clearing cache of all resource files...')
-    BedrockProvider.cache.emptyCache()
+    BedrockProvider.fileHandler.emptyCache()
   }
 
   /**
@@ -25,32 +23,32 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
    */
   public documentDisposables () {
     const disposableSave = vscode.workspace.onDidSaveTextDocument((document) => {
-      const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.cache)
+      const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.fileHandler)
       if (documentHandler.isResourceDocument()) {
         log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
-        // documentHandler.purgeCacheByDocumentType()
         documentHandler.refreshCurrentDocument()
       }
     })
 
     const logEmptyCacheReason = (action: string) => () => {
       log(`File has been ${action}, clearing cache of all resource files...`)
-      BedrockProvider.cache.emptyCache()
+      BedrockProvider.fileHandler.emptyCache()
     }
 
     // on deletion and renaming just empty the cache for now
     const disposableDelete = vscode.workspace.onDidDeleteFiles(logEmptyCacheReason('deleted'))
     const disposableRename = vscode.workspace.onDidRenameFiles(logEmptyCacheReason('renamed'))
+    const disposableCreate = vscode.workspace.onDidCreateFiles(logEmptyCacheReason('created'))
 
-    return [disposableSave, disposableDelete, disposableRename]
+    return [disposableSave, disposableDelete, disposableRename, disposableCreate]
   }
 
   public async provideDefinition (document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Location | undefined> {
-    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.cache)
+    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.fileHandler)
 
     if (!documentHandler.shouldHandleSelection()) return
 
-    let file: FileData | undefined = undefined
+    let location: LocationData | undefined = undefined
 
     const selectionType = documentHandler.getSelectionType()
     const selectionText = documentHandler.getSelectionText()
@@ -62,8 +60,8 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       // jumping to the texture file
       switch (selectionType) {
         case FileType.Texture: {
-          const texture = await documentHandler.fileHandler.getTexture(selectionText)
-          if (texture) return new vscode.Location(texture.uri, new vscode.Position(0, 0))
+          const texture = await BedrockProvider.fileHandler.getTexture(selectionText)
+          if (texture) return new vscode.Location(texture, new vscode.Position(0, 0))
           break
         }
         case FileType.ClientEntityIdentifier: {
@@ -79,14 +77,16 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
         // go from event call to the event being called
         case FileType.EventIdentifier: {
           let fileHandler = new ServerEntityDefinitionFile()
-          file = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.Events, selectionText)
+          const range = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.Events, selectionText)
+          if (range) return new vscode.Location(document.uri, range)
           break
         }
         // want to jump to component group modified
         case FileType.ComponentGroup: {
           if (documentHandler.selection && documentHandler.selection.path.includes('events')) {
             let fileHandler = new ServerEntityDefinitionFile()
-            file = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.ComponentGroups, selectionText)
+            const range = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.ComponentGroups, selectionText)
+            if (range) return new vscode.Location(document.uri, range)
           }
           break
         }
@@ -99,37 +99,38 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       }
     } else return
 
-    if (!file) {
+    if (!location) {
       const searchResult = await documentHandler.getDefinitionOfSelection()
-      if (searchResult) file = searchResult
+      if (searchResult) location = searchResult
     }
 
-    if (file)
-      return new vscode.Location(file.uri, file.range)
+    if (location)
+      return new vscode.Location(location.uri, location.range)
   }
 
   public async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | undefined> {
-    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.cache)
+    const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.fileHandler)
 
     const commandHandler = new CommandHandler(document)
 
     if (documentHandler.shouldHandleCommandCalls()) {
-      const items = await commandHandler.getCompletionItems(position, documentHandler.fileHandler)
-      return items
+      return await commandHandler.getCompletionItems(position, BedrockProvider.fileHandler)
     } else if (documentHandler.shouldHandleSelection()) {
       const selectionRange = documentHandler.getSelectionRange()
-      const completions = await documentHandler.getAllOfSelectionType()
-      if (completions && selectionRange)
-        return completions.identifiers.map((id) => getCompletionItem(id, selectionRange))
+      const completionsData = await documentHandler.getAllOfSelectionType()
+      if (completionsData && selectionRange) {
+        const identifiers = [ ...completionsData.keys() ]
+        return identifiers.map((id) => getCompletionItem(id, selectionRange))
+      }
     }
   }
 
   public async provideDocumentLinks (document: vscode.TextDocument): Promise<vscode.DocumentLink[] | undefined> {
-    const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.cache, false)
+    const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.fileHandler, false)
 
     if (!documentHandler.shouldHandleCommandCalls()) return
 
     const commandHandler = new CommandHandler(document)
-    return commandHandler.getLinks(documentHandler.fileHandler)
+    return commandHandler.getLinks(BedrockProvider.fileHandler)
   }
 }

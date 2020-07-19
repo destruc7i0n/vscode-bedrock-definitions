@@ -2,8 +2,6 @@ import * as vscode from 'vscode'
 
 import { AnimationControllerFile, AnimationFile, ClientEntityDefinitionFile, GeometryFile, MaterialFile, ParticleFile, RenderControllerFile, ServerEntityDefinitionFile, SoundEffectFile } from '../files'
 
-import ResponseCache from '../lib/ResponseCache'
-
 /**
  * The various types of files
  */
@@ -32,22 +30,27 @@ export enum BehaviourDefinitionType {
   ComponentGroups,
 }
 
-export type FileData = {
-  uri: vscode.Uri
-  name: string
-  range: vscode.Range
+export type LocationData = { uri: vscode.Uri, range: vscode.Range }
+export type DefinitionLocation = Map<string, LocationData>
+
+export enum DataType {
+  Definition,
 }
 
-export type FilesSearchResponse = {
-  files: FileData[]
-  identifiers: string[]
-}
+export type FilesData = Map<FileType, FileData>
+export type FileData = Map<vscode.Uri, DataTypeMap>
+export type DataTypeMap = Map<DataType, Data>
+export type Data = Map<string, DataInfo>
+export type DataInfo = { range: vscode.Range }
 
 class FileHandler {
-  private cache: ResponseCache
+  private filesCache: FilesData = new Map()
 
-  constructor (cache: ResponseCache) {
-    this.cache = cache
+  /**
+   * Empty the file cache
+   */
+  public emptyCache () {
+    this.filesCache.clear()
   }
 
   /**
@@ -100,50 +103,64 @@ class FileHandler {
     return file
   }
 
-  /**
-   * Get the identifiers from files following the same style
-   * @param type the type of file to get the identifiers from
-   */
-  private async getByFileType (type: FileType, uri?: vscode.Uri): Promise<FilesSearchResponse> {
-    let file = this.getFileHandler(type)
-    if (file) {
-      if (!uri)
-        return await file.extractFromAllFiles()
-      else
-        return await file.extractFromFile(uri)
+  public async refreshCacheForFile (file: vscode.Uri) {
+    for (let [ type, files ] of this.filesCache) {
+      if (files.has(file)) {
+        const handler = this.getFileHandler(type)
+        if (handler)
+          files.set(file, await handler.extractFromFile(file))
+      }
     }
-    return { files: [], identifiers: [] }
+  }
+
+  private async conditionallyGetByType (type: FileType) {
+    this.filesCache.set(type, new Map())
+
+    const typeMap = this.filesCache.get(type)!
+    const handler = this.getFileHandler(type)
+    if (handler) {
+      const gen = handler.getGlobGenerator()
+
+      for await (let file of gen) {
+        if (!typeMap.has(file)) {
+          typeMap.set(file, await handler.extractFromFile(file))
+        }
+      }
+    }
+  }
+
+  public async getAllByType (type: FileType) {
+    if (!this.filesCache.has(type)) {
+      await this.conditionallyGetByType(type)
+    }
+    return this.filesCache.get(type)!
+  }
+
+  public async getAllOfTypeByDataType (type: FileType, dataType: DataType) {
+    let map: DefinitionLocation = new Map()
+
+    const fileData = await this.getAllByType(type)
+    for (let [ file, dataMap ] of fileData) {
+      const data = dataMap.get(dataType)
+      if (data) {
+        for (let [ id, info ] of data) {
+          map.set(id, {
+            range: info.range,
+            uri: file
+          })
+        }
+      }
+    }
+
+    return map
   }
 
   /**
    * Returns all identifiers of a type specified
    * @param type the type to find
    */
-  public async findByType (type: FileType, uri?: vscode.Uri, overwrite?: boolean) {
-    let files: FilesSearchResponse = { files: [], identifiers: [] }
-
-    switch (type) {
-      case FileType.ServerEntityIdentifier:
-      case FileType.ClientEntityIdentifier:
-      case FileType.SoundEffect:
-      case FileType.Geometry:
-      case FileType.Particle:
-      case FileType.Animation:
-      case FileType.AnimationController:
-      case FileType.Material:
-      case FileType.RenderController: {
-        files = await this.cache.setOrGetFromCache(
-          type, 
-          async () => this.getByFileType(type, uri),
-          uri,
-          overwrite,
-        )
-        break
-      }
-      default: break
-    }
-
-    return files
+  public async getIdentifiersByFileType (type: FileType) {
+    return await this.getAllOfTypeByDataType(type, DataType.Definition)
   }
 
   /**
@@ -152,7 +169,8 @@ class FileHandler {
    * @param identifier the specific id
    */
   public async findByIndentifier (type: FileType, identifier: string) {
-    const { files, identifiers } = await this.findByType(type)
+    const data = await this.getIdentifiersByFileType(type)
+    const identifiers = [ ...data.keys() ]
   
     // model and materials may be parented etc
     if ((type === FileType.Material || type === FileType.Geometry) && !identifiers.includes(identifier)) {
@@ -160,26 +178,20 @@ class FileHandler {
       if (id) identifier = id
     }
   
-    const identifierIndex = identifiers.indexOf(identifier)
-    if (identifierIndex > -1) return files[identifierIndex]
-    return null
+    if (data.has(identifier)) {
+      return data.get(identifier)!
+    }
   }
 
   /**
    * Get a texture from the string specified
    * @param path the path from which to get the texture from
    */
-  public async getTexture (path: string): Promise<FileData | undefined> {
+  public async getTexture (path: string) {
     const textures = await vscode.workspace.findFiles(`**/${path}.{png,tga}`)
 
-    if (textures) {
-      if (textures[0]) {
-        return {
-          uri: textures[0],
-          name: path,
-          range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
-        }
-      }
+    if (textures && textures.length === 1) {
+      return textures[0]
     }
   }
 }

@@ -2,28 +2,24 @@ import * as vscode from 'vscode'
 
 import FileHandler from './FileHandler'
 import Selection from '../lib/Selection'
-import ResponseCache from '../lib/ResponseCache'
 import { cleanJson } from '../lib/util'
 
 import { FileType } from '../handlers/FileHandler'
 
 class EditorDocumentHandler {
   private document: vscode.TextDocument
+  private fileHandler: FileHandler
 
-  public fileHandler: FileHandler
   public type: FileType = FileType.None
   public selection: Selection | null
 
-  private cache: ResponseCache
-
-  constructor (document: vscode.TextDocument, position: vscode.Position | null, cache: ResponseCache, hasSelection: boolean = true) {
+  constructor (document: vscode.TextDocument, position: vscode.Position | null, fileHandler: FileHandler, hasSelection: boolean = true) {
     this.document = document
 
     this.selection = hasSelection && position ? new Selection(document, position) : null
     this.type = this.getDocumentType(document)
 
-    this.cache = cache
-    this.fileHandler = new FileHandler(this.cache)
+    this.fileHandler = fileHandler
   }
 
   public setSelectionType (type: FileType) {
@@ -52,19 +48,12 @@ class EditorDocumentHandler {
   }
 
   /**
-   * Purges the cache of the current document type
-   */
-  public purgeCacheByDocumentType () {
-    this.cache.purgeAllByType(this.type)
-  }
-
-  /**
    * Wrapper around the file searcher
    * @param type the type to search for
    * @param uri optional uri
    */
-  public async findAllOfType (type: FileType, uri?: vscode.Uri) {
-    return await this.fileHandler.findByType(type, uri)
+  public async findAllIdentifiersOfType (type: FileType) {
+    return await this.fileHandler.getIdentifiersByFileType(type)
   }
 
   /**
@@ -73,7 +62,7 @@ class EditorDocumentHandler {
   public async getAllOfSelectionType () {
     const selectionType = this.getSelectionType()
     if (!selectionType) return
-    return await this.findAllOfType(selectionType)
+    return await this.findAllIdentifiersOfType(selectionType)
   }
 
   /**
@@ -113,7 +102,7 @@ class EditorDocumentHandler {
    * Refresh the current document in the cache
    */
   public refreshCurrentDocument () {
-    this.fileHandler.findByType(this.type, this.document.uri, true)
+    this.fileHandler.refreshCacheForFile(this.document.uri)
   }
 
   /**

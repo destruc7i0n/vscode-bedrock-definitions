@@ -4,7 +4,7 @@ import FileSearcher from './FileHandler'
 
 import { FileType } from '../handlers/FileHandler'
 
-import { getCompletionItem, getDocumentLink } from '../lib/util'
+import { getCompletionItem, getDocumentLink, getRangeFromLine } from '../lib/util'
 
 /* Credit to https://github.com/Arcensoth/language-mcfunction for regex */
 const rc = '[a-z0-9_\.\-]+'
@@ -92,7 +92,8 @@ class CommandHandler {
         }
         case FileType.Particle:
         case FileType.ServerEntityIdentifier: {
-          ({ identifiers: items } = await searcher.findByType(call.type))
+          const data = await searcher.getIdentifiersByFileType(call.type)
+          items = [ ...data.keys() ]
           break
         }
         default: break
@@ -153,13 +154,13 @@ class CommandHandler {
         }
         case FileType.ServerEntityIdentifier:
         case FileType.Particle: {
-          id = `${namespace}:${resource}`
+          id = namespace ? `${namespace}:${resource}` : resource
           break
         }
         default: break
       }
 
-      const range = this.getRangeFromLine(commandName, id, match.index, lineNumber)
+      const range = getRangeFromLine(commandName, id, match.index, lineNumber)
 
       return { range, id }
     }
@@ -239,23 +240,6 @@ class CommandHandler {
     }
 
     return links
-  }
-
-  /**
-   * Returns the range of the resource
-   * @param prefix the string prefixing the call
-   * @param resource the resource called
-   * @param startIndex the starting index
-   * @param lineNumber the line number
-   */
-  private getRangeFromLine (prefix: string, resource: string, startIndex: number, lineNumber: number) {
-    const start = startIndex + `${prefix} `.length
-    const end = start + resource.length
-
-    return new vscode.Range(
-      new vscode.Position(lineNumber, start),
-      new vscode.Position(lineNumber, end)
-    )
   }
 }
 

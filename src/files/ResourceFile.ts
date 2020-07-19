@@ -4,7 +4,7 @@ import * as vscode from 'vscode'
 
 import { findNodeAtLocation, Node, parse, parseTree } from 'jsonc-parser'
 
-import { FileType, FileData, FilesSearchResponse } from '../handlers/FileHandler'
+import { FileType, FileData, DataTypeMap, DataType, Data } from '../handlers/FileHandler'
 import { nodeToRange } from '../lib/util'
 
 export interface BaseFile {
@@ -21,42 +21,47 @@ export abstract class ResourceFile {
   public abstract type: FileType
   protected abstract glob: string
 
-  protected abstract extract(document: vscode.TextDocument, node: Node, content: any): FilesSearchResponse
+  extract (document: vscode.TextDocument, node: Node, content: any): DataTypeMap {
+    let response: DataTypeMap = new Map()
 
-  public async extractFromAllFiles (): Promise<FilesSearchResponse> {
+    response.set(DataType.Definition, this.extractIdentifiers(document, node, content))
+    
+    return response
+  }
+
+  protected abstract extractIdentifiers(document: vscode.TextDocument, node: Node, content: any): Data
+
+  public async *getGlobGenerator () {
     const files = await this.getFilesFromGlob(this.glob)
-
-    let filesData: FileData[] = []
-    let filesIdentifiers: string[] = []
-
     for (let file of files) {
-      const extracted = await this.extractFromFile(file)
-      filesData.push(...extracted.files)
-      filesIdentifiers.push(...extracted.identifiers)
-    }
-
-    return {
-      files: filesData,
-      identifiers: filesIdentifiers
+      yield file
     }
   }
 
-  public async extractFromFile (uri: vscode.Uri): Promise<FilesSearchResponse> {
+  public async extractFromAllFiles (): Promise<FileData> {
+    let resp = new Map()
+
+    let gen = this.getGlobGenerator()
+    for await (let file of gen) {
+      const extracted = await this.extractFromFile(file)
+      resp.set(file, extracted)
+    }
+
+    return resp
+  }
+
+  public async extractFromFile (uri: vscode.Uri): Promise<DataTypeMap> {
     const { node, data, document } = await this.getAndParseFileContents(uri)
     if (node && data) {
       return this.extract(document, node, data)
     }
-    return { files: [], identifiers: [] }
+    return new Map()
   }
 
-  protected getFileData (node: Node, path: (string | number)[], document: vscode.TextDocument, name: string): FileData | undefined {
+  protected getRangeFromPath (node: Node, path: (string | number)[], document: vscode.TextDocument) {
     const pointer = findNodeAtLocation(node, path)
     if (pointer) {
-      return {
-        uri: document.uri,
-        name,
-        range: nodeToRange(pointer, document)
-      }
+      return nodeToRange(pointer, document)
     }
   }
 

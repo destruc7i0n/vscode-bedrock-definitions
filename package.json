@@ -3,7 +3,7 @@
   "displayName": "Bedrock Definitions",
   "description": "Go-to definitions and auto-complete for Minecraft Bedrock Edition",
   "icon": "icon.png",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "engines": {
     "vscode": "^1.43.0"
   },

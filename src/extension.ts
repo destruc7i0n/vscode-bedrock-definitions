@@ -47,7 +47,7 @@ export async function activate(context: vscode.ExtensionContext) {
   let disposableCompletion = vscode.languages.registerCompletionItemProvider(
     selectorMcfunction,
     provider,
-    '.', ':', '/' // activate when typing a period, colon, or forward slash
+    '.', ':', '/', '=' // activate when typing a period, colon, forward slash, or equals (for commands)
   )
 
   let disposableLink = vscode.languages.registerDocumentLinkProvider(

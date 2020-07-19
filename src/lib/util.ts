@@ -54,4 +54,21 @@ function log (...args: any) {
   console.log('[Bedrock Definitions]', ...args)
 }
 
-export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange, log }
+/**
+ * Returns the range of the resource
+ * @param prefix the string prefixing the call
+ * @param resource the resource called
+ * @param startIndex the starting index
+ * @param lineNumber the line number
+ */
+function getRangeFromLine (prefix: string, resource: string, startIndex: number, lineNumber: number) {
+  const start = startIndex + `${prefix} `.length
+  const end = start + resource.length
+
+  return new vscode.Range(
+    new vscode.Position(lineNumber, start),
+    new vscode.Position(lineNumber, end)
+  )
+}
+
+export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange, log, getRangeFromLine }

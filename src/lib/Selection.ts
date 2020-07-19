@@ -105,8 +105,8 @@ class Selection {
 
     // infer based on where it is in the file and what is there
     for (let [ groupType, prefixes, parentKeys ] of checkGroups) {
-      let usingPrefix: boolean = false
-      let isChild: boolean = false
+      let usingPrefix = false
+      let isChild = false
 
       if (prefixes) usingPrefix = !!prefixes.find(p => this.text.startsWith(p))
       if (parentKeys && typeof this.parent === 'string') isChild = parentKeys.includes(this.parent)

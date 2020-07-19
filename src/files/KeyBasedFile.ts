@@ -2,14 +2,14 @@ import * as vscode from 'vscode'
 
 import { Node } from 'jsonc-parser'
 
-import { FilesSearchResponse, FileType } from '../handlers/FileHandler'
+import { Data, FileType } from '../handlers/FileHandler'
 import { ResourceFile } from './ResourceFile'
 
 abstract class KeyBasedFile extends ResourceFile {
   protected abstract root: string | undefined
 
-  extract (document: vscode.TextDocument, node: Node, content: any) {
-    let response: FilesSearchResponse = { files: [], identifiers: [] }
+  extractIdentifiers (document: vscode.TextDocument, node: Node, content: any) {
+    let response: Data = new Map()
 
     // if it has a root
     const hasRoot = this.root !== undefined
@@ -22,10 +22,9 @@ abstract class KeyBasedFile extends ResourceFile {
         const path = hasRoot ? [ this.root as string ] : []
         path.push(identifier)
 
-        const fileData = this.getFileData(node, path, document, identifier)
-        if (fileData) {
-          response.files.push(fileData)
-          response.identifiers.push(identifier)
+        const range = this.getRangeFromPath(node, path, document)
+        if (range) {
+          response.set(identifier, { range })
         }
       }
     }
