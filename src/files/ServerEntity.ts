@@ -1,12 +1,15 @@
 import * as vscode from 'vscode'
 
-import { FileType } from '../handlers/FileHandler'
+import { Node } from 'jsonc-parser'
+
+import { Data, DataType, DataTypeMap, FileType } from '../handlers/FileHandler'
 
 import DescriptionBasedFile from './DescriptionBasedFile'
 
+type EntityKeys = 'events' | 'component_groups'
 interface BehaviourEntity {
   'minecraft:entity': {
-    [key in 'events' | 'component_groups']: {
+    [key in EntityKeys]: {
       [key: string]: object;
     };
   }
@@ -22,6 +25,45 @@ class ServerEntityFile extends DescriptionBasedFile {
   title = 'Server Entity'
   root = 'minecraft:entity'
   glob = `**/entities/**/*.json`
+
+  /**
+   * Extract the events and component groups as well
+   * @param document
+   * @param node
+   * @param content 
+   */
+  extract (document: vscode.TextDocument, node: Node, content: BehaviourEntity): DataTypeMap {
+    const response: DataTypeMap = super.extract(document, node, content)
+    response.set(DataType.ServerEntityEvents, this.extractEvents(document, node, content))
+    response.set(DataType.ServerEntityComponentGroups, this.extractComponentGroups(document, node, content))
+    return response
+  }
+
+  private extractEvents (document: vscode.TextDocument, node: Node, content: BehaviourEntity): Data {
+    return this.extractFromObjectKey(content, document, node, 'events')
+  }
+
+  private extractComponentGroups (document: vscode.TextDocument, node: Node, content: BehaviourEntity): Data {
+    return this.extractFromObjectKey(content, document, node, 'component_groups')
+  }
+
+  private extractFromObjectKey (content: BehaviourEntity, document: vscode.TextDocument, node: Node, key: EntityKeys): Data {
+    let response: Data = new Map()
+
+    if (content['minecraft:entity'] && content['minecraft:entity'][key]) {
+      const events = Object.keys(content['minecraft:entity'][key])
+      for (let id of events) {
+        const path = [ 'minecraft:entity', key, id ]
+
+        const range = this.getRangeFromPath(node, path, document)
+        if (range) {
+          response.set(id, { range })
+        }
+      }
+    }
+
+    return response
+  }
 
   /**
    * Get a range in the document of a behaviour definition

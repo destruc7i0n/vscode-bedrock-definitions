@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import * as path from 'path'
 
 import EditorDocumentHandler from './handlers/EditorDocumentHandler'
 import FileHandler, { FileType, BehaviourDefinitionType, LocationData } from './handlers/FileHandler'
@@ -115,8 +116,14 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
     const disposableSave = vscode.workspace.onDidSaveTextDocument((document) => {
       const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.fileHandler)
       if (documentHandler.isResourceDocument()) {
-        log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
+        log(`Saved resource file "${path.basename(document.uri.path)}", clearing cache for this file...`)
         documentHandler.refreshCurrentDocument()
+      }
+    })
+
+    const disposableDelete = vscode.workspace.onDidDeleteFiles(({ files }) => {
+      for (let file of files) {
+        BedrockProvider.fileHandler.deleteFileFromCache(file)
       }
     })
 
@@ -125,8 +132,7 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       BedrockProvider.fileHandler.emptyCache()
     }
 
-    // on deletion and renaming just empty the cache for now
-    const disposableDelete = vscode.workspace.onDidDeleteFiles(logEmptyCacheReason('deleted'))
+    // on renaming and creation just empty the cache for now
     const disposableRename = vscode.workspace.onDidRenameFiles(logEmptyCacheReason('renamed'))
     const disposableCreate = vscode.workspace.onDidCreateFiles(logEmptyCacheReason('created'))
 

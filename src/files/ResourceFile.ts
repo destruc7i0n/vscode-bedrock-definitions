@@ -39,18 +39,6 @@ export abstract class ResourceFile {
     }
   }
 
-  public async extractFromAllFiles (): Promise<FileData> {
-    let resp = new Map()
-
-    let gen = this.getGlobGenerator()
-    for await (let file of gen) {
-      const extracted = await this.extractFromFile(file)
-      resp.set(file, extracted)
-    }
-
-    return resp
-  }
-
   public async extractFromFile (uri: vscode.Uri): Promise<DataTypeMap> {
     const { node, data, document } = await this.getAndParseFileContents(uri)
     if (node && data) {

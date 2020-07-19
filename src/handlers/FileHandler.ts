@@ -17,7 +17,6 @@ import {
 /**
  * The various types of files
  */
-
 export enum FileType {
   None,
   AnimationController,
@@ -42,11 +41,13 @@ export enum BehaviourDefinitionType {
   ComponentGroups,
 }
 
-export type LocationData = { uri: vscode.Uri, range: vscode.Range }
+export type LocationData = { uri: vscode.Uri, range: vscode.Range, fileData: DataTypeMap }
 export type DefinitionLocation = Map<string, LocationData>
 
 export enum DataType {
   Definition,
+  ServerEntityEvents,
+  ServerEntityComponentGroups,
 }
 
 // each type to the files it has
@@ -120,19 +121,45 @@ class FileHandler {
     return file
   }
 
-  public async refreshCacheForFile (file: vscode.Uri) {
+  public getFile (file: vscode.Uri) {
     const path = file.path
+    let resp = { type: FileType.None, file: undefined }
     for (let [ type, files ] of this.filesCache) {
       if (files.has(path)) {
-        const handler = this.getFileHandler(type)
-        if (handler) {
-          files.set(path, await handler.extractFromFile(file))
-          break
-        }
+        return { type, file: files.get(path)! }
       }
+    }
+    return resp
+  }
+
+  /**
+   * Refresh the cache for a file
+   * @param file the file to refresh
+   */
+  public async refreshCacheForFile (file: vscode.Uri) {
+    const path = file.path
+    const { type } = this.getFile(file)
+    if (type !== FileType.None) {
+      const handler = this.getFileHandler(type)
+      if (handler)
+        this.filesCache.get(type)?.set(path, await handler.extractFromFile(file))
     }
   }
 
+  /**
+   * Delete a file by uri from the cache
+   * @param file the file to delete from the cache
+   */
+  public deleteFileFromCache (file: vscode.Uri) {
+    const path = file.path
+    const { type } = this.getFile(file)
+    if (type) this.filesCache.get(type)?.delete(path)
+  }
+
+  /**
+   * Only parse the file if file not in cache
+   * @param type the type of data to get
+   */
   private async conditionallyGetByType (type: FileType) {
     if (!this.filesCache.has(type)) this.filesCache.set(type, new Map())
 
@@ -147,8 +174,10 @@ class FileHandler {
         title: `Updating Bedrock Definitions for "${handler.title}"...`
       }, async () => {
         for await (let file of gen) {
-          if (!typeMap.has(file.path))
-            typeMap.set(file.path, await handler.extractFromFile(file))
+          if (!typeMap.has(file.path)) {
+            const data = await handler.extractFromFile(file)
+            typeMap.set(file.path, data)
+          }
         }
       })
     }
@@ -163,6 +192,10 @@ class FileHandler {
     return await this.bulkMutex[type]!.acquire()
   }
 
+  /**
+   * Get all data from each file of type
+   * @param type the type to get
+   */
   public async getAllByType (type: FileType) {
     // use a mutex to only run one bulk get a time
     const release = await this.getMutexForType(type)
@@ -175,6 +208,11 @@ class FileHandler {
     return this.filesCache.get(type)!
   }
 
+  /**
+   * Filters the data by specific data type
+   * @param type the type to get
+   * @param dataType the specific data to get
+   */
   public async getAllOfTypeByDataType (type: FileType, dataType: DataType) {
     let map: DefinitionLocation = new Map()
 
@@ -185,7 +223,9 @@ class FileHandler {
         for (let [ id, info ] of data) {
           map.set(id, {
             range: info.range,
-            uri: vscode.Uri.file(file)
+            uri: vscode.Uri.file(file),
+            // put this here in case I need other stuff from it
+            fileData: dataMap
           })
         }
       }

@@ -5,7 +5,7 @@ import { Node } from 'jsonc-parser'
 import { Data, FileType } from '../handlers/FileHandler'
 import { ResourceFile, DescriptionObject } from './ResourceFile'
 
-interface DescriptionFileType {
+export interface DescriptionFileType {
   [key: string]: DescriptionObject
 }
 
