@@ -19,6 +19,7 @@ export interface DescriptionObject {
 
 export abstract class ResourceFile {
   public abstract type: FileType
+  public abstract title: string
   protected abstract glob: string
 
   extract (document: vscode.TextDocument, node: Node, content: any): DataTypeMap {

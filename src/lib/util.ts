@@ -16,9 +16,11 @@ function getCompletionItem (text: string, range: vscode.Range, description?: str
  * @param file the uri
  * @param range range of the text
  */
-function getDocumentLink (file: vscode.Uri, range: vscode.Range) {
+function getDocumentLink (file: vscode.Uri, range: vscode.Range, tooltip?: string) {
   const uri = vscode.Uri.file(file.path)
-  return new vscode.DocumentLink(range, uri)
+  const link =  new vscode.DocumentLink(range, uri)
+  if (tooltip) link.tooltip = tooltip
+  return link
 }
 
 /**

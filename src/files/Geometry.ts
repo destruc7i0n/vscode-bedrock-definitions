@@ -7,6 +7,7 @@ import { ResourceFile } from './ResourceFile'
 
 class GeometryFile extends ResourceFile {
   type = FileType.Geometry
+  title = 'Geometry'
   glob = `**/models/**/*.json`
 
   extractIdentifiers (document: vscode.TextDocument, node: Node, content: any) {

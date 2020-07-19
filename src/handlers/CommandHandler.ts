@@ -4,29 +4,10 @@ import FileSearcher from './FileHandler'
 
 import { FileType } from '../handlers/FileHandler'
 
-import { getCompletionItem, getDocumentLink, getRangeFromLine } from '../lib/util'
-
-/* Credit to https://github.com/Arcensoth/language-mcfunction for regex */
-const rc = '[a-z0-9_\.\-]+'
-const resourceId = `(?:(${rc})\:)?`
-const resource = `((?:\/?${rc})*)`
-/* * */
-
-const resourceLocation = `${resourceId}${resource}`
-
-type SupportedCallsType = { type: SupportedCallTypes, prefix: string }
-
-const supportedCalls: SupportedCallsType[] = [
-  { type: FileType.McFunction, prefix: 'function' },
-  { type: FileType.Particle, prefix: 'particle' },
-  { type: FileType.ServerEntityIdentifier, prefix: 'summon' },
-]
+import { getCompletionItem, getDocumentLink } from '../lib/util'
+import LineParser, { Usage, UsageData, RESOURCE } from '../lib/LineParser'
 
 type SupportedCallTypes = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier
-
-interface ResourceType {
-  [key: string]: vscode.Range[]
-}
 
 class CommandHandler {
   private document: vscode.TextDocument
@@ -42,25 +23,24 @@ class CommandHandler {
   public async getLinks (searcher: FileSearcher) {
     let links: vscode.DocumentLink[] = []
 
-    for (let call of supportedCalls) {
-      const calls = this.getCallsFromDocument(call)
-      let typeLinks: vscode.DocumentLink[] = []
+    const usages = this.getCallTypesFromDocument()
 
-      if (Object.keys(calls).length) {
-        switch (call.type) {
+    for (let [ type, usage ] of usages) {
+      let typeLinks: vscode.DocumentLink[] = []
+      if (usage.size) {
+        switch (type) {
           case FileType.McFunction: {
-            typeLinks = await this.getFunctionLinksFromCalls(calls)
+            typeLinks = await this.getFunctionLinksFromCalls(usage)
             break
           }
           case FileType.Particle:
           case FileType.ServerEntityIdentifier: {
-            typeLinks = await this.getLinksFromFilesSearch(calls, searcher, call.type)
+            typeLinks = await this.getLinksFromFilesSearch(usage, searcher, type)
             break
           }
           default: break
         }
       }
-
       links = links.concat(typeLinks)
     }
 
@@ -76,94 +56,61 @@ class CommandHandler {
     let completionItems: vscode.CompletionItem[] = []
 
     const line = this.document.lineAt(position.line)
+    const lineParser = new LineParser(line, position.character)
 
-    for (let call of supportedCalls) {
-      const callData = this.extractCallFromLine(line, call, line.lineNumber)
-      if (!callData) continue
-      
-      const { range, id } = callData
+    for (let [ type, uses ] of lineParser.usages) {
+      if (!uses.size) continue
 
-      let items: string[] = []
+      for (let [ id, ranges ] of uses) {
+        for (let { range } of ranges) {
+          let identifiers: string[] = []
 
-      switch (call.type) {
-        case FileType.McFunction: {
-          items = await this.getFunctionsFromPath(id)
-          break
+          switch (type) {
+            case FileType.McFunction: {
+              identifiers = await this.getFunctionsFromPath(id)
+              break
+            }
+            case FileType.Particle:
+            case FileType.ServerEntityIdentifier: {
+              const data = await searcher.getIdentifiersByFileType(type)
+              identifiers = [ ...data.keys() ]
+              break
+            }
+            default: break
+          }
+
+          completionItems = completionItems.concat(
+            identifiers.map(id => getCompletionItem(id, range))
+          )
         }
-        case FileType.Particle:
-        case FileType.ServerEntityIdentifier: {
-          const data = await searcher.getIdentifiersByFileType(call.type)
-          items = [ ...data.keys() ]
-          break
-        }
-        default: break
       }
-
-      completionItems = completionItems.concat(
-        items.map(item => getCompletionItem(item, range))
-      )
     }
 
     return completionItems
   }
 
   /**
-   * Get all calls of type in the document into an object
-   * @param call the call to search for
+   * Get all the call types from the document
    */
-  private getCallsFromDocument (call: SupportedCallsType): ResourceType {
-    let calls: ResourceType = {}
+  private getCallTypesFromDocument () {
+    const usages: Usage = new Map()
 
-    for (let i = 0; i < this.document.lineCount; i++) {
-      const line = this.document.lineAt(i)
-      const callData = this.extractCallFromLine(line, call, i)
-      if (callData) {
-        const { id, range } = callData
-        if (!calls[id]) calls[id] = []
-        calls[id].push(range)
+    for (let num = 0; num < this.document.lineCount; num++) {
+      const line = this.document.lineAt(num)
+      const lineParser = new LineParser(line)
+      for (let [ type, uses ] of lineParser.usages) {
+        if (!usages.has(type)) usages.set(type, new Map())
+        const typeUsages = usages.get(type)!
+        for (let [ identifier, ranges ] of uses) {
+          typeUsages.set(identifier, [
+            ...(typeUsages.get(identifier) || []),
+            ...ranges
+          ])
+        }
       }
     }
 
-    return calls
-  }
-
-  /**
-   * Extract call of specified type from the line provided
-   * @param line the line of the document to be extracted
-   * @param call the call to search for
-   * @param lineNumber the current line number
-   */
-  public extractCallFromLine (line: vscode.TextLine, call: SupportedCallsType, lineNumber: number) {
-    const { prefix: commandName, type } = call
-    // ignore comments
-    const lineContent = line.text.substring(line.firstNonWhitespaceCharacterIndex, line.text.length)
-    if (lineContent.startsWith('#') || lineContent.startsWith('//') || lineContent.startsWith('*')) return
-
-    const regex = new RegExp(`${commandName} ${resourceLocation}`)
-    const match = line.text.match(regex)
-
-    if (match && match.length === 3 && match.index !== undefined) {
-      const [ command, namespace, resource ] = match
-
-      let id = resource
-
-      switch (type) {
-        case FileType.McFunction: {
-          if (namespace) return // do not handle java functions
-          break
-        }
-        case FileType.ServerEntityIdentifier:
-        case FileType.Particle: {
-          id = namespace ? `${namespace}:${resource}` : resource
-          break
-        }
-        default: break
-      }
-
-      const range = getRangeFromLine(commandName, id, match.index, lineNumber)
-
-      return { range, id }
-    }
+    return usages
   }
 
   /**
@@ -189,19 +136,19 @@ class CommandHandler {
 
   /**
    * Get all function links from the calls
-   * @param calls The calls to find
+   * @param usages The calls to find
    */
-  private async getFunctionLinksFromCalls (calls: ResourceType): Promise<vscode.DocumentLink[]> {
+  private async getFunctionLinksFromCalls (usages: UsageData): Promise<vscode.DocumentLink[]> {
     let links: vscode.DocumentLink[] = []
 
-    let files = Object.keys(calls)
-    files = files.filter((f, index) => files.indexOf(f) === index) // remove duplicates
+    let filePaths = [ ...usages.keys() ]
+    filePaths = filePaths.filter((f, index) => filePaths.indexOf(f) === index) // remove duplicates
 
     // bulk glob
-    const glob = `**/functions/{${files.map(f => `${f}.mcfunction`).join(',')}}`
+    const glob = `**/functions/{${filePaths.map(f => `${f}.mcfunction`).join(',')}}`
     const found = await vscode.workspace.findFiles(glob)
 
-    const fileMatch = new RegExp(`functions/${resource}.mcfunction`)
+    const fileMatch = new RegExp(`functions/${RESOURCE}.mcfunction`)
 
     for (let foundFile of found) {
       // get the original function path from the file
@@ -209,9 +156,9 @@ class CommandHandler {
       if (matchedPath && matchedPath.length === 2) {
         const functionPath = matchedPath[1]
         // check that the resource is being used
-        if (calls[functionPath]) {
-          for (let resourceRange of calls[functionPath]) {
-            links.push(getDocumentLink(foundFile, resourceRange))
+        if (usages.has(functionPath)) {
+          for (let { range } of usages.get(functionPath)!) {
+            links.push(getDocumentLink(foundFile, range, this.getTooltip(FileType.McFunction)))
           }
         }
       }
@@ -226,20 +173,32 @@ class CommandHandler {
    * @param searcher the file searcher
    * @param type the type of file to search
    */
-  private async getLinksFromFilesSearch (calls: ResourceType, searcher: FileSearcher, type: FileType) {
+  private async getLinksFromFilesSearch (calls: UsageData, searcher: FileSearcher, type: SupportedCallTypes) {
     const links: vscode.DocumentLink[] = []
 
-    for (let resourceId of Object.keys(calls)) {
+    for (let [ resourceId, usages ] of calls) {
       const file = await searcher.findByIndentifier(type, resourceId)
 
       if (file) {
-        for (let resourceRange of calls[resourceId]) {
-          links.push(getDocumentLink(file.uri, resourceRange))
-        }
+        for (let { range } of usages)
+          links.push(getDocumentLink(file.uri, range, this.getTooltip(type)))
       }
     }
 
     return links
+  }
+
+  /**
+   * Get tooltip for link
+   * @param type tooltip type
+   */
+  private getTooltip (type: SupportedCallTypes) {
+    const name = {
+      [FileType.McFunction]: 'function',
+      [FileType.ServerEntityIdentifier]: 'entity',
+      [FileType.Particle]: 'particle',
+    }[type]
+    return `Go to ${name} definition`
   }
 }
 

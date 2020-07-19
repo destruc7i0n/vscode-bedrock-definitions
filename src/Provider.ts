@@ -18,31 +18,6 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
     BedrockProvider.fileHandler.emptyCache()
   }
 
-  /**
-   * Whenever a document is saved
-   */
-  public documentDisposables () {
-    const disposableSave = vscode.workspace.onDidSaveTextDocument((document) => {
-      const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.fileHandler)
-      if (documentHandler.isResourceDocument()) {
-        log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
-        documentHandler.refreshCurrentDocument()
-      }
-    })
-
-    const logEmptyCacheReason = (action: string) => () => {
-      log(`File has been ${action}, clearing cache of all resource files...`)
-      BedrockProvider.fileHandler.emptyCache()
-    }
-
-    // on deletion and renaming just empty the cache for now
-    const disposableDelete = vscode.workspace.onDidDeleteFiles(logEmptyCacheReason('deleted'))
-    const disposableRename = vscode.workspace.onDidRenameFiles(logEmptyCacheReason('renamed'))
-    const disposableCreate = vscode.workspace.onDidCreateFiles(logEmptyCacheReason('created'))
-
-    return [disposableSave, disposableDelete, disposableRename, disposableCreate]
-  }
-
   public async provideDefinition (document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Location | undefined> {
     const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.fileHandler)
 
@@ -111,9 +86,8 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
   public async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | undefined> {
     const documentHandler = new EditorDocumentHandler(document, position, BedrockProvider.fileHandler)
 
-    const commandHandler = new CommandHandler(document)
-
     if (documentHandler.shouldHandleCommandCalls()) {
+      const commandHandler = new CommandHandler(document)
       return await commandHandler.getCompletionItems(position, BedrockProvider.fileHandler)
     } else if (documentHandler.shouldHandleSelection()) {
       const selectionRange = documentHandler.getSelectionRange()
@@ -132,5 +106,30 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
 
     const commandHandler = new CommandHandler(document)
     return commandHandler.getLinks(BedrockProvider.fileHandler)
+  }
+
+  /**
+   * Whenever a document is changed in the workspace
+   */
+  public documentDisposables () {
+    const disposableSave = vscode.workspace.onDidSaveTextDocument((document) => {
+      const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.fileHandler)
+      if (documentHandler.isResourceDocument()) {
+        log(`Saved resource file "${document.uri.path}", clearing cache for this file...`)
+        documentHandler.refreshCurrentDocument()
+      }
+    })
+
+    const logEmptyCacheReason = (action: string) => () => {
+      log(`File has been ${action}, clearing cache of all resource files...`)
+      BedrockProvider.fileHandler.emptyCache()
+    }
+
+    // on deletion and renaming just empty the cache for now
+    const disposableDelete = vscode.workspace.onDidDeleteFiles(logEmptyCacheReason('deleted'))
+    const disposableRename = vscode.workspace.onDidRenameFiles(logEmptyCacheReason('renamed'))
+    const disposableCreate = vscode.workspace.onDidCreateFiles(logEmptyCacheReason('created'))
+
+    return [disposableSave, disposableDelete, disposableRename, disposableCreate]
   }
 }

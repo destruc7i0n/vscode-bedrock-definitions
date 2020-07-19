@@ -19,6 +19,7 @@ export enum BehaviourDefinitionType {
 
 class ServerEntityFile extends DescriptionBasedFile {
   type = FileType.ServerEntityIdentifier
+  title = 'Server Entity'
   root = 'minecraft:entity'
   glob = `**/entities/**/*.json`
 
