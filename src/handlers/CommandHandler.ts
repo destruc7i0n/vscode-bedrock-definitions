@@ -37,7 +37,6 @@ class CommandHandler {
             typeLinks = await this.getLinksFromFilesSearch(usage, searcher, type)
             break
           }
-          default: break
         }
       }
       links = links.concat(typeLinks)
@@ -75,7 +74,6 @@ class CommandHandler {
           identifiers = [ ...data.keys() ]
           break
         }
-        default: break
       }
 
       // attempt to link to entities which are overwritten
@@ -217,6 +215,7 @@ class CommandHandler {
       [FileType.ServerEntityIdentifier]: 'entity',
       [FileType.Particle]: 'particle',
       [FileType.SoundEffect]: 'sound',
+      [FileType.Block]: 'block',
     }[type]
     return `Go to ${name} definition`
   }

@@ -29,6 +29,14 @@ export abstract class ResourceFile {
     this.uri = uri
   }
 
+  /**
+   * Returns the data from this file of the type specified
+   * @param type 
+   */
+  public get (type: DataType) {
+    return this.data.get(type)
+  }
+
   public async extract () {
     const { node, data, document } = await getAndParseFileContents(this.uri)
     if (node && data) {

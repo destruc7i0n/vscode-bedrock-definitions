@@ -3,6 +3,7 @@ import * as vscode from 'vscode'
 import { Mutex } from 'async-mutex'
 
 import {
+  ResourceFile,
   AnimationControllerFile,
   AnimationFile,
   ClientEntityDefinitionFile,
@@ -11,10 +12,9 @@ import {
   ParticleFile,
   RenderControllerFile,
   ServerEntityDefinitionFile,
-  SoundEffectFile
+  SoundEffectFile,
+  ServerBlockFile
 } from '../files'
-
-import { ResourceFile } from '../files/ResourceFile'
 
 type HandlerType = typeof ResourceFile & (new (uri: vscode.Uri) => ResourceFile)
 
@@ -36,6 +36,7 @@ export enum FileType {
   ComponentGroup,
   Animate,
   SoundEffect,
+  Block,
 
   McFunction,
 }
@@ -68,6 +69,19 @@ class FileHandler {
   private filesCache: FilesData = new Map()
   private bulkMutex: { [key in FileType]?: Mutex } = {}
 
+  private handlers: Map<FileType, HandlerType> = new Map([
+    [ FileType.Geometry, GeometryFile ],
+    [ FileType.Particle, ParticleFile ],
+    [ FileType.Material, MaterialFile ],
+    [ FileType.Animation, AnimationFile ],
+    [ FileType.AnimationController, AnimationControllerFile ],
+    [ FileType.RenderController, RenderControllerFile ],
+    [ FileType.ServerEntityIdentifier, ServerEntityDefinitionFile ],
+    [ FileType.ClientEntityIdentifier, ClientEntityDefinitionFile ],
+    [ FileType.SoundEffect, SoundEffectFile ],
+    [ FileType.Block, ServerBlockFile ],
+  ])
+
   /**
    * Empty the file cache
    */
@@ -80,49 +94,7 @@ class FileHandler {
    * @param type the type of handler to get
    */
   public getFileHandler (type: FileType) {
-    let handler: HandlerType | undefined = undefined
-
-    switch (type) {
-      case FileType.Geometry: {
-        handler = GeometryFile
-        break
-      }
-      case FileType.Particle: {
-        handler = ParticleFile
-        break
-      }
-      case FileType.Material: {
-        handler = MaterialFile
-        break
-      }
-      case FileType.Animation: {
-        handler = AnimationFile
-        break
-      }
-      case FileType.AnimationController: {
-        handler = AnimationControllerFile
-        break
-      }
-      case FileType.RenderController: {
-        handler = RenderControllerFile
-        break
-      }
-      case FileType.ServerEntityIdentifier: {
-        handler = ServerEntityDefinitionFile
-        break
-      }
-      case FileType.ClientEntityIdentifier: {
-        handler = ClientEntityDefinitionFile
-        break
-      }
-      case FileType.SoundEffect: {
-        handler = SoundEffectFile
-        break
-      }
-      default: break
-    }
-
-    return handler
+    return this.handlers.get(type)
   }
 
   public getFile (file: vscode.Uri) {

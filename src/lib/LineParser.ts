@@ -11,6 +11,8 @@ export const MCFUNCTION_PATH_MATCH = new RegExp(`functions/${FILE_LOCATION.sourc
 const SELECTOR_ARGUMENTS_REGEX = /(?<=@[a-z]\[)(?:([^\]]*))?(?=\]|$)/g
 const SELECTOR_REGEX_NO_GROUP = /@[a-z](?:\[[^\]]*\])?/g
 
+const LOCATION_REGEX = /(?:[\~\^](?:\-?\d*\.?\d+)? *){3}/
+
 export type Usage = Map<SupportedResources, UsageData>
 export type UsageData = Data<LineInfo[]>
 export type LineInfo = { range: vscode.Range, link: boolean }
