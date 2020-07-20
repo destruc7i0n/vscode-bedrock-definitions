@@ -1,13 +1,14 @@
 import * as vscode from 'vscode'
 
 import { Data, FileType } from '../handlers/FileHandler'
+import { removeEndingQuote } from './util'
 
-/* Credit to https://github.com/Arcensoth/language-mcfunction some regex */
-const RESOURCE_ID = /((?:[a-z0-9_\.\-]+):?(?:[a-z0-9_\.\-]+)*)(?=[ ]|$)/
+/* Credit to https://github.com/Arcensoth/language-mcfunction for some regex */
+const RESOURCE_ID = /((?:[a-z0-9_\.\-]+):?(?:[a-z0-9_\.\-]+)*)/
 export const FILE_LOCATION = /([a-z0-9_\.\-\/]+)/
 export const MCFUNCTION_PATH_MATCH = new RegExp(`functions/${FILE_LOCATION.source}.mcfunction`)
 
-const SELECTOR_REGEX = /@[a-z](?:\[([^\]]*)\]?)?/g
+const SELECTOR_ARGUMENTS_REGEX = /(?<=@[a-z]\[)(?:([^\]]*))?(?=\]|$)/g
 const SELECTOR_REGEX_NO_GROUP = /@[a-z](?:\[[^\]]*\])?/g
 
 export type Usage = Map<SupportedResources, UsageData>
@@ -18,15 +19,16 @@ export type SupportedResources = FileType.McFunction | FileType.Particle | FileT
 type SupportedUsageType = { type: SupportedResources, prefix?: string, regex: RegExp, link: boolean }
 
 class LineParser {
-  line: vscode.TextLine
-  lineContent: string
+  private line: vscode.TextLine
+  private lineContent: string
+  private lineStartIndex: number
 
   usages: Usage = new Map()
 
   supportedCommands: SupportedUsageType[] = [
     {
       type: FileType.McFunction,
-      regex: new RegExp(`function ${FILE_LOCATION.source}$`),
+      regex: new RegExp(`function ${FILE_LOCATION.source}`),
       link: true
     },
     {
@@ -58,6 +60,8 @@ class LineParser {
   constructor (line: vscode.TextLine) {
     this.line = line
     this.lineContent = line.text.substring(line.firstNonWhitespaceCharacterIndex, line.text.length)
+
+    this.lineStartIndex = line.firstNonWhitespaceCharacterIndex
 
     if (this.isValidLine()) {
       this.extractCommandCalls()
@@ -110,13 +114,13 @@ class LineParser {
 
       for (let match of matches) {
         if (match && match.length === 2 && match.index !== undefined) {
-          const [ command, id ] = match
+          let [ command, id ] = match
 
           // remove the id from the command to get the index where the resource is used
           const commandPrefix = command.replace(id, '')
 
           // the index of the start of the command, and the length of the command before the resource
-          const start = match.index + commandPrefix.length
+          const start = this.lineStartIndex + match.index + commandPrefix.length
           const range = new vscode.Range(
             new vscode.Position(this.line.lineNumber, start),
             new vscode.Position(this.line.lineNumber, start + id.length)
@@ -135,11 +139,15 @@ class LineParser {
    * Extract selectors from the current line
    */
   private extractSelectors () {
-    const selectorMatches = this.lineContent.matchAll(SELECTOR_REGEX)
+    const selectorMatches = this.lineContent.matchAll(SELECTOR_ARGUMENTS_REGEX)
     for (let match of selectorMatches) {
-      const selectorText = match[1]
+      let selectorText = match[1]
 
-      if (selectorText) this.parseSelector(selectorText, 0, match.index!)
+      if (selectorText) {
+        // remove a trailing quote if any, from a json file
+        selectorText = removeEndingQuote(selectorText)
+        this.parseSelector(selectorText, 0, match.index!)
+      }
     }
   }
 
@@ -160,13 +168,13 @@ class LineParser {
     }
 
     // remove any spaces around
-    const trimmedKey = key = key.trim()
+    const trimmedKey = key.trim()
 
     // account for the "="
     index++
 
-    // index + index that the selector is starting + `@e[`.length
-    const valueStartIndex = index + startIndex + 3
+    // string starting index + current index + index that the selector is starting
+    const valueStartIndex = this.lineStartIndex + index + startIndex
     let value = ''
     // while not at the end of a key
     if (trimmedKey === 'scores') {

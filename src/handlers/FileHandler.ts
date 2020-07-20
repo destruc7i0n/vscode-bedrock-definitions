@@ -14,6 +14,10 @@ import {
   SoundEffectFile
 } from '../files'
 
+import { ResourceFile } from '../files/ResourceFile'
+
+type HandlerType = typeof ResourceFile & (new (uri: vscode.Uri) => ResourceFile)
+
 /**
  * The various types of files
  */
@@ -41,7 +45,7 @@ export enum BehaviourDefinitionType {
   ComponentGroups,
 }
 
-export type LocationData = { uri: vscode.Uri, range: vscode.Range, fileData: DataTypeMap }
+export type LocationData = { uri: vscode.Uri, range: vscode.Range, resourceFile: ResourceFile }
 export type DefinitionLocation = Map<string, LocationData>
 
 export enum DataType {
@@ -53,7 +57,7 @@ export enum DataType {
 // each type to the files it has
 export type FilesData = Map<FileType, FileData>
 // the string path to the types of data in the file
-export type FileData = Map<string, DataTypeMap>
+export type FileData = Map<string, ResourceFile>
 // the types of data to the data amp
 export type DataTypeMap = Map<DataType, Data>
 // the data ids to the data
@@ -76,49 +80,49 @@ class FileHandler {
    * @param type the type of handler to get
    */
   public getFileHandler (type: FileType) {
-    let file
+    let handler: HandlerType | undefined = undefined
 
     switch (type) {
       case FileType.Geometry: {
-        file = new GeometryFile()
+        handler = GeometryFile
         break
       }
       case FileType.Particle: {
-        file = new ParticleFile()
+        handler = ParticleFile
         break
       }
       case FileType.Material: {
-        file = new MaterialFile()
+        handler = MaterialFile
         break
       }
       case FileType.Animation: {
-        file = new AnimationFile()
+        handler = AnimationFile
         break
       }
       case FileType.AnimationController: {
-        file = new AnimationControllerFile()
+        handler = AnimationControllerFile
         break
       }
       case FileType.RenderController: {
-        file = new RenderControllerFile()
+        handler = RenderControllerFile
         break
       }
       case FileType.ServerEntityIdentifier: {
-        file = new ServerEntityDefinitionFile()
+        handler = ServerEntityDefinitionFile
         break
       }
       case FileType.ClientEntityIdentifier: {
-        file = new ClientEntityDefinitionFile()
+        handler = ClientEntityDefinitionFile
         break
       }
       case FileType.SoundEffect: {
-        file = new SoundEffectFile()
+        handler = SoundEffectFile
         break
       }
       default: break
     }
 
-    return file
+    return handler
   }
 
   public getFile (file: vscode.Uri) {
@@ -137,12 +141,9 @@ class FileHandler {
    * @param file the file to refresh
    */
   public async refreshCacheForFile (file: vscode.Uri) {
-    const path = file.path
-    const { type } = this.getFile(file)
+    const { type, file: resourceFile } = this.getFile(file)
     if (type !== FileType.None) {
-      const handler = this.getFileHandler(type)
-      if (handler)
-        this.filesCache.get(type)?.set(path, await handler.extractFromFile(file))
+      await resourceFile?.extract()
     }
   }
 
@@ -164,19 +165,20 @@ class FileHandler {
     if (!this.filesCache.has(type)) this.filesCache.set(type, new Map())
 
     const typeMap = this.filesCache.get(type)!
-    const handler = this.getFileHandler(type)
-    if (handler) {
-      const gen = handler.getGlobGenerator()
+    const Handler = this.getFileHandler(type)
+    if (Handler) {
+      const gen = Handler.getGlobGenerator()
 
       // show progress while getting all the files
       await vscode.window.withProgress({
         location: vscode.ProgressLocation.Window,
-        title: `Updating Bedrock Definitions for "${handler.title}"...`
+        title: `Updating Bedrock Definitions for "${Handler.title}"...`
       }, async () => {
         for await (let file of gen) {
           if (!typeMap.has(file.path)) {
-            const data = await handler.extractFromFile(file)
-            typeMap.set(file.path, data)
+            const handler = new Handler(file)
+            await handler.extract()
+            typeMap.set(file.path, handler)
           }
         }
       })
@@ -217,15 +219,15 @@ class FileHandler {
     let map: DefinitionLocation = new Map()
 
     const fileData = await this.getAllByType(type)
-    for (let [ file, dataMap ] of fileData) {
-      const data = dataMap.get(dataType)
+    for (let [ file, resourceFile ] of fileData) {
+      const data = resourceFile.data.get(dataType)
       if (data) {
         for (let [ id, info ] of data) {
           map.set(id, {
             range: info.range,
             uri: vscode.Uri.file(file),
             // put this here in case I need other stuff from it
-            fileData: dataMap
+            resourceFile,
           })
         }
       }

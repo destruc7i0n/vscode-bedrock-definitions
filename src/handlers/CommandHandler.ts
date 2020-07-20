@@ -6,6 +6,7 @@ import { FileType } from '../handlers/FileHandler'
 
 import LineParser, { SupportedResources, Usage, UsageData, MCFUNCTION_PATH_MATCH } from '../lib/LineParser'
 import { getCompletionItem, getDocumentLink } from '../lib/util'
+import VanillaEntities from '../lib/defaults'
 
 class CommandHandler {
   private document: vscode.TextDocument
@@ -75,6 +76,20 @@ class CommandHandler {
           break
         }
         default: break
+      }
+
+      // attempt to link to entities which are overwritten
+      if (type === FileType.ServerEntityIdentifier) {
+        const withoutOverwrittenEntities = identifiers.filter(id =>
+          !(
+            id.startsWith('minecraft:') &&
+            VanillaEntities.includes(id.replace('minecraft:', ''))
+          )
+        )
+        identifiers = [
+          ...withoutOverwrittenEntities,
+          ...VanillaEntities,
+        ]
       }
 
       completionItems = completionItems.concat(
@@ -181,6 +196,9 @@ class CommandHandler {
     const links: vscode.DocumentLink[] = []
 
     for (let [ resourceId, usages ] of calls) {
+      // check for any overwritten entity
+      if (VanillaEntities.includes(resourceId)) resourceId = `minecraft:${resourceId}`
+
       const file = await searcher.findByIndentifier(type, resourceId)
 
       if (file) {

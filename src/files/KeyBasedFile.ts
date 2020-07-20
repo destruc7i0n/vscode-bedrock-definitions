@@ -2,8 +2,10 @@ import * as vscode from 'vscode'
 
 import { Node } from 'jsonc-parser'
 
-import { Data, FileType } from '../handlers/FileHandler'
+import { Data } from '../handlers/FileHandler'
 import { ResourceFile } from './ResourceFile'
+
+import { getRangeFromPath } from '../lib/util'
 
 abstract class KeyBasedFile extends ResourceFile {
   protected abstract root: string | undefined
@@ -22,7 +24,7 @@ abstract class KeyBasedFile extends ResourceFile {
         const path = hasRoot ? [ this.root as string ] : []
         path.push(identifier)
 
-        const range = this.getRangeFromPath(node, path, document)
+        const range = getRangeFromPath(node, path, document)
         if (range) {
           response.set(identifier, { range })
         }

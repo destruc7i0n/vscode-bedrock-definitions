@@ -5,10 +5,16 @@ import { Node } from 'jsonc-parser'
 import { Data, FileType } from '../handlers/FileHandler'
 import { ResourceFile } from './ResourceFile'
 
+import { getRangeFromPath } from '../lib/util'
+
 class GeometryFile extends ResourceFile {
   type = FileType.Geometry
-  title = 'Geometry'
-  glob = `**/models/**/*.json`
+  static title = 'Geometry'
+  static glob = `**/models/**/*.json`
+
+  constructor(uri: vscode.Uri) {
+    super(uri)
+  }
 
   extractIdentifiers (document: vscode.TextDocument, node: Node, content: any) {
     let response: Data = new Map()
@@ -24,7 +30,7 @@ class GeometryFile extends ResourceFile {
             if (geometry.startsWith('geometry.')) {
               let path = [ geometry ]
 
-              const range = this.getRangeFromPath(node, path, document)
+              const range = getRangeFromPath(node, path, document)
               if (range) {
                 response.set(geometry, { range })
               }
@@ -40,7 +46,7 @@ class GeometryFile extends ResourceFile {
               if (identifier) {
                 let path = [ 'minecraft:geometry', i ]
 
-                const range = this.getRangeFromPath(node, path, document)
+                const range = getRangeFromPath(node, path, document)
                 if (range) {
                   response.set(identifier, { range })
                 }

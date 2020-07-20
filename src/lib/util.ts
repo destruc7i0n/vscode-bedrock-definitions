@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import { Node } from 'jsonc-parser'
+import { Node, findNodeAtLocation } from 'jsonc-parser'
 
 function getCompletionItem (text: string, range: vscode.Range, description?: string, insertText?: string): vscode.CompletionItem {
   const item = new vscode.CompletionItem(text)
@@ -56,4 +56,26 @@ function log (...args: any) {
   console.log('[Bedrock Definitions]', ...args)
 }
 
-export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange, log }
+/**
+ * Returns a range from the given json path
+ * @param node 
+ * @param path 
+ * @param document 
+ */
+function getRangeFromPath (node: Node, path: (string | number)[], document: vscode.TextDocument) {
+  const pointer = findNodeAtLocation(node, path)
+  if (pointer) {
+    return nodeToRange(pointer, document)
+  }
+}
+
+/**
+ * Remove the ending quote from a string
+ * @param string 
+ */
+function removeEndingQuote (string: string) {
+  if (string.endsWith('"')) return string.slice(0, -1)
+  return string
+}
+
+export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange, getRangeFromPath, removeEndingQuote, log }

@@ -1,12 +1,18 @@
+import * as vscode from 'vscode'
+
 import { FileType } from '../handlers/FileHandler'
 
 import KeyBasedFile from './KeyBasedFile'
 
 class MaterialFile extends KeyBasedFile {
   type = FileType.Material
-  title = 'Material'
+  static title = 'Material'
   root = 'materials'
-  glob = `**/materials/**/*.material`
+  static glob = `**/materials/**/*.material`
+
+  constructor(uri: vscode.Uri) {
+    super(uri)
+  }
 }
 
 export default MaterialFile

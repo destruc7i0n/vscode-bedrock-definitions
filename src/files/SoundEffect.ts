@@ -1,12 +1,18 @@
+import * as vscode from 'vscode'
+
 import { FileType } from '../handlers/FileHandler'
 
 import KeyBasedFile from './KeyBasedFile'
 
 class SoundEffectFile extends KeyBasedFile {
   type = FileType.SoundEffect
-  title = 'Sound Effect'
+  static title = 'Sound Effect'
   root = undefined
-  glob = `**/sounds/sound_definitions.json`
+  static glob = `**/sounds/sound_definitions.json`
+
+  constructor(uri: vscode.Uri) {
+    super(uri)
+  }
 }
 
 export default SoundEffectFile

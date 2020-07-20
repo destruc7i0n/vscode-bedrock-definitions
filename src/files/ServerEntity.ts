@@ -2,9 +2,12 @@ import * as vscode from 'vscode'
 
 import { Node } from 'jsonc-parser'
 
-import { Data, DataType, DataTypeMap, FileType } from '../handlers/FileHandler'
+import { Data, DataType, FileType } from '../handlers/FileHandler'
 
 import DescriptionBasedFile from './DescriptionBasedFile'
+
+import { getRangeFromPath } from '../lib/util'
+import { getAndParseFileContents } from '../lib/files'
 
 type EntityKeys = 'events' | 'component_groups'
 interface BehaviourEntity {
@@ -22,9 +25,13 @@ export enum BehaviourDefinitionType {
 
 class ServerEntityFile extends DescriptionBasedFile {
   type = FileType.ServerEntityIdentifier
-  title = 'Server Entity'
+  static title = 'Server Entity'
   root = 'minecraft:entity'
-  glob = `**/entities/**/*.json`
+  static glob = `**/entities/**/*.json`
+
+  constructor(uri: vscode.Uri) {
+    super(uri)
+  }
 
   /**
    * Extract the events and component groups as well
@@ -32,11 +39,10 @@ class ServerEntityFile extends DescriptionBasedFile {
    * @param node
    * @param content 
    */
-  extract (document: vscode.TextDocument, node: Node, content: BehaviourEntity): DataTypeMap {
-    const response: DataTypeMap = super.extract(document, node, content)
-    response.set(DataType.ServerEntityEvents, this.extractEvents(document, node, content))
-    response.set(DataType.ServerEntityComponentGroups, this.extractComponentGroups(document, node, content))
-    return response
+  extractData (document: vscode.TextDocument, node: Node, content: BehaviourEntity) {
+    super.extractData(document, node, content)
+    this.data.set(DataType.ServerEntityEvents, this.extractEvents(document, node, content))
+    this.data.set(DataType.ServerEntityComponentGroups, this.extractComponentGroups(document, node, content))
   }
 
   private extractEvents (document: vscode.TextDocument, node: Node, content: BehaviourEntity): Data {
@@ -55,7 +61,7 @@ class ServerEntityFile extends DescriptionBasedFile {
       for (let id of events) {
         const path = [ 'minecraft:entity', key, id ]
 
-        const range = this.getRangeFromPath(node, path, document)
+        const range = getRangeFromPath(node, path, document)
         if (range) {
           response.set(id, { range })
         }
@@ -71,8 +77,8 @@ class ServerEntityFile extends DescriptionBasedFile {
    * @param key the key to get from under
    * @param definition the definition to get
    */
-  public async getBehaviourDefinitionInFile (document: vscode.TextDocument, key: BehaviourDefinitionType, definition: string) {
-    const { node, data } = await this.getAndParseFileContents(document.uri)
+  public static async getBehaviourDefinitionInFile (document: vscode.TextDocument, key: BehaviourDefinitionType, definition: string) {
+    const { node, data } = await getAndParseFileContents(document.uri)
 
     const keyName = key === BehaviourDefinitionType.Events ? 'events' : 'component_groups'
 
@@ -83,7 +89,7 @@ class ServerEntityFile extends DescriptionBasedFile {
         if (documentJSON['minecraft:entity'][keyName]) {
           if (documentJSON['minecraft:entity'][keyName][definition]) {
             const path = [ 'minecraft:entity', keyName, definition ]
-            return this.getRangeFromPath(node, path, document)
+            return getRangeFromPath(node, path, document)
           }
         }
       }

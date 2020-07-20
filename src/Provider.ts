@@ -52,16 +52,14 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       switch (selectionType) {
         // go from event call to the event being called
         case FileType.EventIdentifier: {
-          let fileHandler = new ServerEntityDefinitionFile()
-          const range = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.Events, selectionText)
+          const range = await ServerEntityDefinitionFile.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.Events, selectionText)
           if (range) return new vscode.Location(document.uri, range)
           break
         }
         // want to jump to component group modified
         case FileType.ComponentGroup: {
           if (documentHandler.selection && documentHandler.selection.path.includes('events')) {
-            let fileHandler = new ServerEntityDefinitionFile()
-            const range = await fileHandler.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.ComponentGroups, selectionText)
+            const range = await ServerEntityDefinitionFile.getBehaviourDefinitionInFile(document, BehaviourDefinitionType.ComponentGroups, selectionText)
             if (range) return new vscode.Location(document.uri, range)
           }
           break

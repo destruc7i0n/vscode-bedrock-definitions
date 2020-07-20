@@ -1,12 +1,18 @@
+import * as vscode from 'vscode'
+
 import { FileType } from '../handlers/FileHandler'
 
 import KeyBasedFile from './KeyBasedFile'
 
 class RenderControllerFile extends KeyBasedFile {
   type = FileType.RenderController
-  title = 'Render Controller'
+  static title = 'Render Controller'
   root = 'render_controllers'
-  glob = `**/render_controllers/**/*.json`
+  static glob = `**/render_controllers/**/*.json`
+
+  constructor(uri: vscode.Uri) {
+    super(uri)
+  }
 }
 
 export default RenderControllerFile

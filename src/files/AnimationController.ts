@@ -1,12 +1,18 @@
+import * as vscode from 'vscode'
+
 import { FileType } from '../handlers/FileHandler'
 
 import KeyBasedFile from './KeyBasedFile'
 
 class AnimationControllerFile extends KeyBasedFile {
   type = FileType.AnimationController
-  title = 'Animation Controller'
+  static title = 'Animation Controller'
   root = 'animation_controllers'
-  glob = `**/animation_controllers/**/*.json`
+  static glob = `**/animation_controllers/**/*.json`
+
+  constructor(uri: vscode.Uri) {
+    super(uri)
+  }
 }
 
 export default AnimationControllerFile
