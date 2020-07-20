@@ -16,6 +16,12 @@ class GeometryFile extends ResourceFile {
     super(uri)
   }
 
+  /**
+   * Extract identifiers of either key based or description based type
+   * @param document 
+   * @param node 
+   * @param content 
+   */
   extractIdentifiers (document: vscode.TextDocument, node: Node, content: any) {
     let response: Data = new Map()
 

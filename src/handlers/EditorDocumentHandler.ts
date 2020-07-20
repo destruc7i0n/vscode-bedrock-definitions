@@ -112,6 +112,7 @@ class EditorDocumentHandler {
     let type: FileType = FileType.None
     // check that in client file, to not perform on the definition itself
     if (document.fileName.endsWith('.json')) {
+      // don't use jsonc-parser to save time
       const content = cleanJson(document.getText())
 
       if (!content) return type

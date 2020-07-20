@@ -17,12 +17,27 @@ export interface DescriptionObject {
 }
 
 export abstract class ResourceFile {
+  /**
+   * The file type, such as an entity definition
+   */
   public abstract type: FileType
+  /**
+   * The human readable title of this file, such as "Animation"
+   */
   public static title: string
+  /**
+   * The glob to search for files of this type
+   */
   public static glob: string
 
+  /**
+   * The URI of this file, provided by vscode
+   */
   public uri: vscode.Uri
 
+  /**
+   * The data that this file contains
+   */
   public data: DataTypeMap = new Map()
 
   constructor (uri: vscode.Uri) {
@@ -37,6 +52,9 @@ export abstract class ResourceFile {
     return this.data.get(type)
   }
 
+  /**
+   * Extract all types of data from this file
+   */
   public async extract () {
     const { node, data, document } = await getAndParseFileContents(this.uri)
     if (node && data) {
@@ -44,12 +62,21 @@ export abstract class ResourceFile {
     }
   }
 
+  /**
+   * Method to run extractors for this file
+   * @param document 
+   * @param node 
+   * @param content 
+   */
   protected extractData (document: vscode.TextDocument, node: Node, content: any) {
     this.data.set(DataType.Definition, this.extractIdentifiers(document, node, content))
   }
 
   protected abstract extractIdentifiers(document: vscode.TextDocument, node: Node, content: any): Data
 
+  /**
+   * Get an async generator for each file of the glob
+   */
   public static async *getGlobGenerator () {
     const files = await getOrderedFilesFromGlob(this.glob)
     for (let file of files) {

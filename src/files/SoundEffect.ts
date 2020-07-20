@@ -16,6 +16,12 @@ class SoundEffectFile extends KeyBasedFile {
     super(uri)
   }
 
+  /**
+   * Check for the root key and update accordingly
+   * @param document 
+   * @param node 
+   * @param content 
+   */
   extractIdentifiers (document: vscode.TextDocument, node: Node, content: any) {
     const contentKeys = Object.keys(content)
     // newer format update key

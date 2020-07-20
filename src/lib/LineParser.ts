@@ -18,7 +18,7 @@ export type UsageData = Data<LineInfo[]>
 export type LineInfo = { range: vscode.Range, link: boolean }
 
 export type SupportedResources = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier | FileType.SoundEffect
-type SupportedUsageType = { type: SupportedResources, prefix?: string, regex: RegExp, link: boolean }
+type SupportedUsageType = { type: SupportedResources, prefix?: string, regex: RegExp[], link: boolean }
 
 class LineParser {
   private line: vscode.TextLine
@@ -27,36 +27,35 @@ class LineParser {
 
   usages: Usage = new Map()
 
-  supportedCommands: SupportedUsageType[] = [
+  private supportedCommands: SupportedUsageType[] = [
     {
       type: FileType.McFunction,
-      regex: new RegExp(`function ${FILE_LOCATION.source}`),
+      regex: [new RegExp(`function ${FILE_LOCATION.source}`)],
       link: true
     },
     {
       type: FileType.Particle,
-      regex: new RegExp(`particle ${RESOURCE_ID.source}`),
+      regex: [new RegExp(`particle ${RESOURCE_ID.source}`)],
       link: true
     },
     {
       type: FileType.ServerEntityIdentifier,
-      regex: new RegExp(`summon ${RESOURCE_ID.source}`),
+      regex: [new RegExp(`summon ${RESOURCE_ID.source}`)],
       link: true
     },
+    // sound definitions
     {
       type: FileType.SoundEffect,
-      regex: new RegExp(`playsound ${RESOURCE_ID.source}`),
-      link: false
-    },
-    {
-      type: FileType.SoundEffect,
-      regex: new RegExp(`stopsound ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`),
+      regex: [
+        new RegExp(`playsound ${RESOURCE_ID.source}`),
+        new RegExp(`stopsound ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`)
+      ],
       link: false
     },
   ]
 
-  supportedSelectors: SupportedUsageType[] = [
-    { type: FileType.ServerEntityIdentifier, prefix: 'type', regex: RESOURCE_ID, link: false }
+  private supportedSelectors: SupportedUsageType[] = [
+    { type: FileType.ServerEntityIdentifier, prefix: 'type', regex: [RESOURCE_ID], link: false }
   ]
 
   constructor (line: vscode.TextLine) {
@@ -72,7 +71,7 @@ class LineParser {
   }
 
   /**
-   * Get any usage on the current line at the position, if any
+   * Find usage on the line that is where the cursor is at
    * @param position the position of the cursor
    */
   public getUsageAtCursorPosition (position: vscode.Position) {
@@ -106,32 +105,34 @@ class LineParser {
    */
   private extractCommandCalls () {
     for (let supportedCommand of this.supportedCommands) {
-      const { regex, type } = supportedCommand
+      const { type } = supportedCommand
 
-      // init map
-      if (!this.usages.has(type)) this.usages.set(type, new Map())
-      let entries = this.usages.get(type)!
+      for (let regex of supportedCommand.regex) {
+        // init map
+        if (!this.usages.has(type)) this.usages.set(type, new Map())
+        let entries = this.usages.get(type)!
 
-      const matches = this.lineContent.matchAll(regex)
+        const matches = this.lineContent.matchAll(regex)
 
-      for (let match of matches) {
-        if (match && match.length === 2 && match.index !== undefined) {
-          let [ command, id ] = match
+        for (let match of matches) {
+          if (match && match.length === 2 && match.index !== undefined) {
+            let [ command, id ] = match
 
-          // remove the id from the command to get the index where the resource is used
-          const commandPrefix = command.replace(id, '')
+            // remove the id from the command to get the index where the resource is used
+            const commandPrefix = command.replace(id, '')
 
-          // the index of the start of the command, and the length of the command before the resource
-          const start = this.lineStartIndex + match.index + commandPrefix.length
-          const range = new vscode.Range(
-            new vscode.Position(this.line.lineNumber, start),
-            new vscode.Position(this.line.lineNumber, start + id.length)
-          )
+            // the index of the start of the command, and the length of the command before the resource
+            const start = this.lineStartIndex + match.index + commandPrefix.length
+            const range = new vscode.Range(
+              new vscode.Position(this.line.lineNumber, start),
+              new vscode.Position(this.line.lineNumber, start + id.length)
+            )
 
-          entries.set(id, [
-            ...(entries.get(id) || []),
-            { range, link: supportedCommand.link }
-          ])
+            entries.set(id, [
+              ...(entries.get(id) || []),
+              { range, link: supportedCommand.link }
+            ])
+          }
         }
       }
     }
@@ -154,12 +155,13 @@ class LineParser {
   }
 
   /**
-   * Simple parser to extract the KV pairs in the selector
+   * Simple parser to extract and check the KV pairs in the selector
    * @param input the inside of the selector
    * @param index the index to start at in the input
    * @param startIndex the starting index in the entire line
    */
   private parseSelector (input: string, index: number, startIndex: number) {
+    // base
     if (index > input.length || input.charAt(index) === ']') return
 
     // get the key
@@ -197,13 +199,20 @@ class LineParser {
     // remove any spaces around
     const trimmedValue = value.trim()
 
+    // construct the range from the position
     const valueRange = new vscode.Range(
       new vscode.Position(this.line.lineNumber, valueStartIndex),
       new vscode.Position(this.line.lineNumber, valueStartIndex + value.length)
     )
 
-    for (let { type, prefix, link } of this.supportedSelectors) {
+    selectorLoop:
+    for (let { type, prefix, link, regex } of this.supportedSelectors) {
       if (prefix === key) {
+        // verify that the value matches the regex
+        for (let re of regex) {
+          if(trimmedValue.length > 0 && !re.test(trimmedValue)) continue selectorLoop
+        }
+
         if (!this.usages.has(type)) this.usages.set(type, new Map())
         let entries = this.usages.get(type)!
         entries.set(trimmedValue, [
@@ -213,6 +222,7 @@ class LineParser {
       }
     }
 
+    // begin next argument
     this.parseSelector(input, index + 1, startIndex)
   }
 }

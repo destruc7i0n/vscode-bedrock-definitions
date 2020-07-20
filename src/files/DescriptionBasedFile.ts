@@ -11,8 +11,15 @@ export interface DescriptionFileType {
   [key: string]: DescriptionObject
 }
 
+/**
+ * Handles files where it follows a top-level key and
+ * the identifier is in a description object, such as the entity file
+ */
 abstract class DescriptionBasedFile extends ResourceFile {
   public abstract type: FileType
+  /**
+   * The string of the root of this file, at the same level as format_version
+   */
   protected abstract root: string
 
   extractIdentifiers (document: vscode.TextDocument, node: Node, content: DescriptionFileType): Data {

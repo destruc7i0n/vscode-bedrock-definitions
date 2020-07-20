@@ -210,14 +210,13 @@ class CommandHandler {
    * @param type tooltip type
    */
   private getTooltip (type: SupportedResources) {
-    const name = {
-      [FileType.McFunction]: 'function',
-      [FileType.ServerEntityIdentifier]: 'entity',
-      [FileType.Particle]: 'particle',
-      [FileType.SoundEffect]: 'sound',
-      [FileType.Block]: 'block',
-    }[type]
-    return `Go to ${name} definition`
+    const name: Map<SupportedResources, string> = new Map([
+      [ FileType.McFunction, 'function'],
+      [ FileType.ServerEntityIdentifier, 'entity'],
+      [ FileType.Particle, 'particle'],
+      [ FileType.SoundEffect, 'sound'],
+    ])
+    return `Go to ${name.get(type)!} definition`
   }
 }
 

@@ -7,7 +7,14 @@ import { ResourceFile } from './ResourceFile'
 
 import { getRangeFromPath } from '../lib/util'
 
+/**
+ * Handles files where there are keys being the identifier,
+ * such as the < 1.12 geometry file
+ */
 abstract class KeyBasedFile extends ResourceFile {
+  /**
+   * Optional root of the file. Some have one, some don't...
+   */
   protected abstract root: string | undefined
 
   extractIdentifiers (document: vscode.TextDocument, node: Node, content: any) {
