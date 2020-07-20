@@ -15,13 +15,13 @@ abstract class KeyBasedFile extends ResourceFile {
 
     // if it has a root
     const hasRoot = this.root !== undefined
-    if (hasRoot) content = content[this.root as string]
+    if (hasRoot) content = content[this.root!]
 
     if (content) {
       const identifiers = Object.keys(content)
 
       for (let identifier of identifiers) {
-        const path = hasRoot ? [ this.root as string ] : []
+        const path = hasRoot ? [this.root!] : []
         path.push(identifier)
 
         const range = getRangeFromPath(node, path, document)
