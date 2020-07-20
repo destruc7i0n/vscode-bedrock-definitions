@@ -80,15 +80,12 @@ class CommandHandler {
 
       // attempt to link to entities which are overwritten
       if (type === FileType.ServerEntityIdentifier) {
-        const withoutOverwrittenEntities = identifiers.filter(id =>
-          !(
-            id.startsWith('minecraft:') &&
-            VanillaEntities.includes(id.replace('minecraft:', ''))
-          )
-        )
+        // merge entities with the default ones
         identifiers = [
-          ...withoutOverwrittenEntities,
-          ...VanillaEntities,
+          ...new Set([
+            ...identifiers.map(id => id.replace('minecraft:', '')),
+            ...VanillaEntities,
+          ])
         ]
       }
 
@@ -196,8 +193,8 @@ class CommandHandler {
     const links: vscode.DocumentLink[] = []
 
     for (let [ resourceId, usages ] of calls) {
-      // check for any overwritten entity
-      if (VanillaEntities.includes(resourceId)) resourceId = `minecraft:${resourceId}`
+      // if there is no namespace, assume vanilla entity
+      if (resourceId.split(':').length === 1) resourceId = `minecraft:${resourceId}`
 
       const file = await searcher.findByIndentifier(type, resourceId)
 
