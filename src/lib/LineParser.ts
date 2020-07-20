@@ -1,24 +1,21 @@
 import * as vscode from 'vscode'
 
-import { Data, FileType, RangeInfo } from '../handlers/FileHandler'
+import { Data, FileType } from '../handlers/FileHandler'
 
-import { getRangeFromLine } from '../lib/util'
+/* Credit to https://github.com/Arcensoth/language-mcfunction some regex */
+const RESOURCE_ID = /((?:[a-z0-9_\.\-]+):?(?:[a-z0-9_\.\-]+)*)(?=[ ]|$)/
+export const FILE_LOCATION = /([a-z0-9_\.\-\/]+)/
+export const MCFUNCTION_PATH_MATCH = new RegExp(`functions/${FILE_LOCATION.source}.mcfunction`)
 
-/* Credit to https://github.com/Arcensoth/language-mcfunction for regex */
-export const RESOURCE_CHARS = '[a-z0-9_\.\-]+'
-export const RESOURCE_ID = `(?:(${RESOURCE_CHARS})\:)?`
-export const RESOURCE = `((?:\/?${RESOURCE_CHARS})*)`
-/* * */
-
-const RESOURCE_LOCATION = `${RESOURCE_ID}${RESOURCE}`
-
-const selectorRegex = `@[a-z](?:\\[([^ ]*)(?:\\]|$))?`
+const SELECTOR_REGEX = /@[a-z](?:\[([^\]]*)\]?)?/g
+const SELECTOR_REGEX_NO_GROUP = /@[a-z](?:\[[^\]]*\])?/g
 
 export type Usage = Map<SupportedResources, UsageData>
-export type UsageData = Data<RangeInfo[]>
+export type UsageData = Data<LineInfo[]>
+export type LineInfo = { range: vscode.Range, link: boolean }
 
-type SupportedResources = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier
-type SupportedUsageType = { type: SupportedResources, prefix: string, re: string }
+export type SupportedResources = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier | FileType.SoundEffect
+type SupportedUsageType = { type: SupportedResources, prefix?: string, regex: RegExp, link: boolean }
 
 class LineParser {
   line: vscode.TextLine
@@ -27,22 +24,64 @@ class LineParser {
   usages: Usage = new Map()
 
   supportedCommands: SupportedUsageType[] = [
-    { type: FileType.McFunction, prefix: 'function', re: RESOURCE_LOCATION },
-    { type: FileType.Particle, prefix: 'particle', re: RESOURCE_LOCATION },
-    { type: FileType.ServerEntityIdentifier, prefix: 'summon', re: RESOURCE_LOCATION },
+    {
+      type: FileType.McFunction,
+      regex: new RegExp(`function ${FILE_LOCATION.source}$`),
+      link: true
+    },
+    {
+      type: FileType.Particle,
+      regex: new RegExp(`particle ${RESOURCE_ID.source}`),
+      link: true
+    },
+    {
+      type: FileType.ServerEntityIdentifier,
+      regex: new RegExp(`summon ${RESOURCE_ID.source}`),
+      link: true
+    },
+    {
+      type: FileType.SoundEffect,
+      regex: new RegExp(`playsound ${RESOURCE_ID.source}`),
+      link: false
+    },
+    {
+      type: FileType.SoundEffect,
+      regex: new RegExp(`stopsound ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`),
+      link: false
+    },
   ]
 
   supportedSelectors: SupportedUsageType[] = [
-    { type: FileType.ServerEntityIdentifier, prefix: 'type', re: RESOURCE_LOCATION }
+    { type: FileType.ServerEntityIdentifier, prefix: 'type', regex: RESOURCE_ID, link: false }
   ]
 
-  constructor (line: vscode.TextLine, character?: number) {
+  constructor (line: vscode.TextLine) {
     this.line = line
-    this.lineContent = line.text.substring(line.firstNonWhitespaceCharacterIndex, character || line.text.length)
+    this.lineContent = line.text.substring(line.firstNonWhitespaceCharacterIndex, line.text.length)
 
     if (this.isValidLine()) {
-      this.usages = this.extractCommandCalls()
-      if (character) this.extractSelectors()
+      this.extractCommandCalls()
+      this.extractSelectors()
+    }
+  }
+
+  /**
+   * Get any usage on the current line at the position, if any
+   * @param position the position of the cursor
+   */
+  public getUsageAtCursorPosition (position: vscode.Position) {
+    for (let [ type, usages ] of this.usages) {
+      for (let [ content, ranges ] of usages) {
+        for (let { range } of ranges) {
+          if (range.contains(position)) {
+            return {
+              content,
+              range,
+              type,
+            }
+          }
+        }
+      }
     }
   }
 
@@ -54,61 +93,117 @@ class LineParser {
   }
 
   /**
-   * Extract all call types from the line
+   * Extract all command usages from the line
    * @param line the line of the document to be extracted
    * @param call the call to search for
    * @param lineNumber the current line number
    */
-  private extractCommandCalls (): Usage {
-    let calls: Usage = new Map()
-
+  private extractCommandCalls () {
     for (let supportedCommand of this.supportedCommands) {
-      const { prefix: command, re, type } = supportedCommand
+      const { regex, type } = supportedCommand
 
       // init map
-      if (!calls.has(type)) calls.set(type, new Map())
-      let entries = calls.get(type)!
+      if (!this.usages.has(type)) this.usages.set(type, new Map())
+      let entries = this.usages.get(type)!
 
-      const regex = new RegExp(`${command} ${re}`)
       const matches = this.lineContent.matchAll(regex)
 
       for (let match of matches) {
-        if (match && match.length === 3 && match.index !== undefined) {
-          const [ _command, namespace, resource ] = match
-  
-          let id = resource
-    
-          switch (type) {
-            case FileType.McFunction: {
-              if (namespace) return calls // do not handle java functions
-              break
-            }
-            case FileType.ServerEntityIdentifier:
-            case FileType.Particle: {
-              id = namespace ? `${namespace}:${resource}` : resource
-              break
-            }
-            default: break
-          }
-    
-          const range = getRangeFromLine(command, id, match.index, this.line.lineNumber)
-    
+        if (match && match.length === 2 && match.index !== undefined) {
+          const [ command, id ] = match
+
+          // remove the id from the command to get the index where the resource is used
+          const commandPrefix = command.replace(id, '')
+
+          // the index of the start of the command, and the length of the command before the resource
+          const start = match.index + commandPrefix.length
+          const range = new vscode.Range(
+            new vscode.Position(this.line.lineNumber, start),
+            new vscode.Position(this.line.lineNumber, start + id.length)
+          )
+
           entries.set(id, [
             ...(entries.get(id) || []),
-            { range }
+            { range, link: supportedCommand.link }
           ])
         }
       }
     }
-
-    return calls
   }
 
   /**
    * Extract selectors from the current line
    */
   private extractSelectors () {
-    // todo
+    const selectorMatches = this.lineContent.matchAll(SELECTOR_REGEX)
+    for (let match of selectorMatches) {
+      const selectorText = match[1]
+
+      if (selectorText) this.parseSelector(selectorText, 0, match.index!)
+    }
+  }
+
+  /**
+   * Simple parser to extract the KV pairs in the selector
+   * @param input the inside of the selector
+   * @param index the index to start at in the input
+   * @param startIndex the starting index in the entire line
+   */
+  private parseSelector (input: string, index: number, startIndex: number) {
+    if (index > input.length || input.charAt(index) === ']') return
+
+    // get the key
+    let key = ''
+    while (index < input.length && input.charAt(index) !== '=') {
+      key += input.charAt(index)
+      index++
+    }
+
+    // remove any spaces around
+    const trimmedKey = key = key.trim()
+
+    // account for the "="
+    index++
+
+    // index + index that the selector is starting + `@e[`.length
+    const valueStartIndex = index + startIndex + 3
+    let value = ''
+    // while not at the end of a key
+    if (trimmedKey === 'scores') {
+      index++ // the first curly bracket
+      while (index < input.length && input.charAt(index) !== '}') {
+        value += input.charAt(index)
+        index++
+      }
+      index++ // the second curly bracket
+    } else {
+      // wait until next param
+      while (index < input.length && input.charAt(index) !== ',') {
+        value += input.charAt(index)
+        index++
+      }
+    }
+
+    // remove any spaces around
+    const trimmedValue = value.trim()
+
+    const valueRange = new vscode.Range(
+      new vscode.Position(this.line.lineNumber, valueStartIndex),
+      new vscode.Position(this.line.lineNumber, valueStartIndex + value.length)
+    )
+
+    for (let { type, prefix, link } of this.supportedSelectors) {
+      if (prefix === key) {
+        if (!this.usages.has(type)) this.usages.set(type, new Map())
+        let entries = this.usages.get(type)!
+        entries.set(trimmedValue, [
+          ...(entries.get(trimmedValue) || []),
+          { range: valueRange, link }
+        ])
+      }
+    }
+
+    this.parseSelector(input, index + 1, startIndex)
   }
 }
 

@@ -4,10 +4,8 @@ import FileSearcher from './FileHandler'
 
 import { FileType } from '../handlers/FileHandler'
 
+import LineParser, { SupportedResources, Usage, UsageData, MCFUNCTION_PATH_MATCH } from '../lib/LineParser'
 import { getCompletionItem, getDocumentLink } from '../lib/util'
-import LineParser, { Usage, UsageData, RESOURCE } from '../lib/LineParser'
-
-type SupportedCallTypes = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier
 
 class CommandHandler {
   private document: vscode.TextDocument
@@ -23,14 +21,14 @@ class CommandHandler {
   public async getLinks (searcher: FileSearcher) {
     let links: vscode.DocumentLink[] = []
 
-    const usages = this.getCallTypesFromDocument()
+    const usages = this.getResourceUsagesFromDocument()
 
     for (let [ type, usage ] of usages) {
       let typeLinks: vscode.DocumentLink[] = []
       if (usage.size) {
         switch (type) {
           case FileType.McFunction: {
-            typeLinks = await this.getFunctionLinksFromCalls(usage)
+            typeLinks = await this.getFunctionLinksFromUsages(usage)
             break
           }
           case FileType.Particle:
@@ -56,43 +54,41 @@ class CommandHandler {
     let completionItems: vscode.CompletionItem[] = []
 
     const line = this.document.lineAt(position.line)
-    const lineParser = new LineParser(line, position.character)
+    const lineParser = new LineParser(line)
+    const cursorUsage = lineParser.getUsageAtCursorPosition(position)
 
-    for (let [ type, uses ] of lineParser.usages) {
-      if (!uses.size) continue
+    if (cursorUsage) {
+      const { type, content, range } = cursorUsage
 
-      for (let [ id, ranges ] of uses) {
-        for (let { range } of ranges) {
-          let identifiers: string[] = []
+      let identifiers: string[] = []
 
-          switch (type) {
-            case FileType.McFunction: {
-              identifiers = await this.getFunctionsFromPath(id)
-              break
-            }
-            case FileType.Particle:
-            case FileType.ServerEntityIdentifier: {
-              const data = await searcher.getIdentifiersByFileType(type)
-              identifiers = [ ...data.keys() ]
-              break
-            }
-            default: break
-          }
-
-          completionItems = completionItems.concat(
-            identifiers.map(id => getCompletionItem(id, range))
-          )
+      switch (type) {
+        case FileType.McFunction: {
+          identifiers = await this.getFunctionsFromPath(content)
+          break
         }
+        case FileType.SoundEffect:
+        case FileType.Particle:
+        case FileType.ServerEntityIdentifier: {
+          const data = await searcher.getIdentifiersByFileType(type)
+          identifiers = [ ...data.keys() ]
+          break
+        }
+        default: break
       }
+
+      completionItems = completionItems.concat(
+        identifiers.map(id => getCompletionItem(id, range))
+      )
     }
 
     return completionItems
   }
 
   /**
-   * Get all the call types from the document
+   * Get all the usages of resources in the document
    */
-  private getCallTypesFromDocument () {
+  private getResourceUsagesFromDocument () {
     const usages: Usage = new Map()
 
     for (let num = 0; num < this.document.lineCount; num++) {
@@ -118,18 +114,28 @@ class CommandHandler {
    * @param functionPath path to list functions from
    */
   public async getFunctionsFromPath (functionPath: string) {
-    const glob = `**/functions/${functionPath}/**/*.mcfunction`
+    let id = functionPath
+    let glob = ''
+
+    if (id.includes('/')) {
+      // remove the final forward slash if any
+      if (id.endsWith('/')) id = id.substring(0, id.length - 1)
+      // search using this as a prefix
+      glob = `**/functions/${id}/**/*.mcfunction`
+    } else {
+      // a search by partial name
+      glob = `**/functions/**/${id}*.mcfunction`
+    }
+
     const found = await vscode.workspace.findFiles(glob)
 
     let files: string[] = []
 
-    files = found.map((file) => {
-      const filePath = file.path
-
-      // remove everything leading up to here
-      const functionDirectoryPath = filePath.substring(filePath.indexOf(functionPath)).replace('.mcfunction', '')
-      return functionDirectoryPath
-    })
+    for (let foundFile of found) {
+      const filePath = foundFile.path
+      const matchedPath = filePath.match(MCFUNCTION_PATH_MATCH)
+      if (matchedPath && matchedPath.length === 2) files.push(matchedPath[1])
+    }
 
     return files
   } 
@@ -138,7 +144,7 @@ class CommandHandler {
    * Get all function links from the calls
    * @param usages The calls to find
    */
-  private async getFunctionLinksFromCalls (usages: UsageData): Promise<vscode.DocumentLink[]> {
+  private async getFunctionLinksFromUsages (usages: UsageData): Promise<vscode.DocumentLink[]> {
     let links: vscode.DocumentLink[] = []
 
     let filePaths = [ ...usages.keys() ]
@@ -148,17 +154,15 @@ class CommandHandler {
     const glob = `**/functions/{${filePaths.map(f => `${f}.mcfunction`).join(',')}}`
     const found = await vscode.workspace.findFiles(glob)
 
-    const fileMatch = new RegExp(`functions/${RESOURCE}.mcfunction`)
-
     for (let foundFile of found) {
       // get the original function path from the file
-      const matchedPath = foundFile.path.match(fileMatch)
+      const matchedPath = foundFile.path.match(MCFUNCTION_PATH_MATCH)
       if (matchedPath && matchedPath.length === 2) {
         const functionPath = matchedPath[1]
         // check that the resource is being used
         if (usages.has(functionPath)) {
-          for (let { range } of usages.get(functionPath)!) {
-            links.push(getDocumentLink(foundFile, range, this.getTooltip(FileType.McFunction)))
+          for (let { range, link } of usages.get(functionPath)!) {
+            if (link) links.push(getDocumentLink(foundFile, range, this.getTooltip(FileType.McFunction)))
           }
         }
       }
@@ -173,15 +177,15 @@ class CommandHandler {
    * @param searcher the file searcher
    * @param type the type of file to search
    */
-  private async getLinksFromFilesSearch (calls: UsageData, searcher: FileSearcher, type: SupportedCallTypes) {
+  private async getLinksFromFilesSearch (calls: UsageData, searcher: FileSearcher, type: SupportedResources) {
     const links: vscode.DocumentLink[] = []
 
     for (let [ resourceId, usages ] of calls) {
       const file = await searcher.findByIndentifier(type, resourceId)
 
       if (file) {
-        for (let { range } of usages)
-          links.push(getDocumentLink(file.uri, range, this.getTooltip(type)))
+        for (let { range, link } of usages)
+          if (link) links.push(getDocumentLink(file.uri, range, this.getTooltip(type)))
       }
     }
 
@@ -192,11 +196,12 @@ class CommandHandler {
    * Get tooltip for link
    * @param type tooltip type
    */
-  private getTooltip (type: SupportedCallTypes) {
+  private getTooltip (type: SupportedResources) {
     const name = {
       [FileType.McFunction]: 'function',
       [FileType.ServerEntityIdentifier]: 'entity',
       [FileType.Particle]: 'particle',
+      [FileType.SoundEffect]: 'sound',
     }[type]
     return `Go to ${name} definition`
   }

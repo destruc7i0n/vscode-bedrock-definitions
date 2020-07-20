@@ -123,6 +123,7 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
 
     const disposableDelete = vscode.workspace.onDidDeleteFiles(({ files }) => {
       for (let file of files) {
+        log(`File has been deleted, clearing cache of all file...`)
         BedrockProvider.fileHandler.deleteFileFromCache(file)
       }
     })

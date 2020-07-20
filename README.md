@@ -23,7 +23,8 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
     - Component Groups (go to component groups from the usage in events)
   - mcfunction files
     - Functions
-    - Particles and entities
+    - Particles
+    - Entities
 
 - Auto-complete works for the following types of definitions
   - Client definitions
@@ -36,7 +37,9 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
     - Animations / Animation Controllers
   - mcfunction files
     - Functions
-    - Particles and entities
+    - Particles
+    - Entities
+    - Sounds
 
 <sub><sup>*If the behaviour pack counterpart is open in the workspace</sup></sub>
 
