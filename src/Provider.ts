@@ -49,6 +49,7 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       }
     } else if (documentHandler.type === FileType.ServerEntityIdentifier) {
       // jumping to the behaviour definitions
+      // don't use cached data since I like using this without saving...
       switch (selectionType) {
         // go from event call to the event being called
         case FileType.EventIdentifier: {

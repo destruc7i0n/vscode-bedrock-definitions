@@ -37,7 +37,7 @@ function cleanJson (data: string) {
 }
 
 /**
- * Converts the node to a range
+ * Converts the node to a range in the document provided
  * @param node the node
  * @param document the document
  */

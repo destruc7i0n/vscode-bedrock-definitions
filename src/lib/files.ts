@@ -4,11 +4,18 @@ import * as vscode from 'vscode'
 
 import { Node, parse, parseTree } from 'jsonc-parser'
 
+interface FileContent {
+  node: Node | null,
+  data: any,
+  document: vscode.TextDocument
+}
+
 /**
  * Open and parse (with source-maps) the file specified
  * @param file the file to parse
  */
-async function getAndParseFileContents (file: vscode.Uri): Promise<{node: Node | null, data: any, document: vscode.TextDocument}> {
+async function getAndParseFileContents (file: vscode.Uri): Promise<FileContent> {
+  // why must `openTextDocument` take so long...
   const document = await vscode.workspace.openTextDocument(file)
   const textContent = document.getText()
 

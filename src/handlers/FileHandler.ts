@@ -97,15 +97,23 @@ class FileHandler {
     return this.handlers.get(type)
   }
 
-  public getFile (file: vscode.Uri) {
+  /**
+   * Get file from the path specified
+   * Optionally specify type to initialize the file
+   * @param file 
+   * @param type 
+   */
+  public async getFile (file: vscode.Uri, type?: FileType) {
     const path = file.path
-    let resp = { type: FileType.None, file: undefined }
     for (let [ type, files ] of this.filesCache) {
       if (files.has(path)) {
         return { type, file: files.get(path)! }
       }
     }
-    return resp
+    if (type) {
+      const resourceFile = await this.initFile(type, file)
+      return { type, file: resourceFile }
+    }
   }
 
   /**
@@ -113,9 +121,12 @@ class FileHandler {
    * @param file the file to refresh
    */
   public async refreshCacheForFile (file: vscode.Uri) {
-    const { type, file: resourceFile } = this.getFile(file)
-    if (type !== FileType.None) {
-      await resourceFile?.extract()
+    const fileInfo = await this.getFile(file)
+    if (fileInfo) {
+      const { type, file: resourceFile } = fileInfo
+      if (type !== FileType.None) {
+        await resourceFile?.extract()
+      }
     }
   }
 
@@ -123,20 +134,37 @@ class FileHandler {
    * Delete a file by uri from the cache
    * @param file the file to delete from the cache
    */
-  public deleteFileFromCache (file: vscode.Uri) {
+  public async deleteFileFromCache (file: vscode.Uri) {
     const path = file.path
-    const { type } = this.getFile(file)
-    if (type) this.filesCache.get(type)?.delete(path)
+    const fileData = await this.getFile(file)
+    if (fileData) this.filesCache.get(fileData.type)?.delete(path)
+  }
+
+  /**
+   * Initialize file of type in cache
+   * @param type 
+   * @param file 
+   */
+  private async initFile (type: FileType, file: vscode.Uri) {
+    if (!this.filesCache.has(type)) this.filesCache.set(type, new Map())
+
+    const typeMap = this.filesCache.get(type)!
+    if (!typeMap.has(file.path)) {
+      const Handler = this.getFileHandler(type)
+      if (Handler) {
+        const handler = new Handler(file)
+        await handler.extract()
+        typeMap.set(file.path, handler)
+      }
+    }
+    return typeMap.get(file.path)!
   }
 
   /**
    * Only parse the file if file not in cache
    * @param type the type of data to get
    */
-  private async conditionallyGetByType (type: FileType) {
-    if (!this.filesCache.has(type)) this.filesCache.set(type, new Map())
-
-    const typeMap = this.filesCache.get(type)!
+  private async conditionallyExtractFromFileByType (type: FileType) {
     const Handler = this.getFileHandler(type)
     if (Handler) {
       const gen = Handler.getGlobGenerator()
@@ -147,11 +175,7 @@ class FileHandler {
         title: `Updating Bedrock Definitions for "${Handler.title}"...`
       }, async () => {
         for await (let file of gen) {
-          if (!typeMap.has(file.path)) {
-            const handler = new Handler(file)
-            await handler.extract()
-            typeMap.set(file.path, handler)
-          }
+          await this.initFile(type, file)
         }
       })
     }
@@ -173,12 +197,11 @@ class FileHandler {
   public async getAllByType (type: FileType) {
     // use a mutex to only run one bulk get a time
     const release = await this.getMutexForType(type)
-
     if (!this.filesCache.has(type)) {
-      await this.conditionallyGetByType(type)
+      await this.conditionallyExtractFromFileByType(type)
     }
-
     release()
+
     return this.filesCache.get(type)!
   }
 
@@ -192,7 +215,7 @@ class FileHandler {
 
     const fileData = await this.getAllByType(type)
     for (let [ file, resourceFile ] of fileData) {
-      const data = resourceFile.data.get(dataType)
+      const data = resourceFile.get(dataType)
       if (data) {
         for (let [ id, info ] of data) {
           map.set(id, {
@@ -226,13 +249,12 @@ class FileHandler {
     const identifiers = [ ...data.keys() ]
   
     // model and materials may be parented etc
-    if ((type === FileType.Material || type === FileType.Geometry) && !identifiers.includes(identifier)) {
+    if ((type === FileType.Material || type === FileType.Geometry) && !data.has(identifier)) {
       const id = identifiers.find(key => key.startsWith(`${identifier}:`))
       if (id) identifier = id
     }
   
-    if (data.has(identifier))
-      return data.get(identifier)!
+    if (data.has(identifier)) return data.get(identifier)!
   }
 
   /**
@@ -242,8 +264,7 @@ class FileHandler {
   public async getTexture (path: string) {
     const textures = await vscode.workspace.findFiles(`**/${path}.{png,tga}`)
 
-    if (textures && textures.length === 1)
-      return textures[0]
+    if (textures && textures.length === 1) return textures[0]
   }
 }
 

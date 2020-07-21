@@ -134,7 +134,7 @@ class CommandHandler {
       glob = `**/functions/${id}/**/*.mcfunction`
     } else {
       // a search by partial name
-      glob = `**/functions/**/${id}*.mcfunction`
+      glob = `**/functions/**/*${id}*.mcfunction`
     }
 
     const found = await vscode.workspace.findFiles(glob)
