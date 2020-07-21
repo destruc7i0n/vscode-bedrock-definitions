@@ -62,8 +62,11 @@ class CommandHandler {
 
       let identifiers: string[] = []
 
+      let completionType = vscode.CompletionItemKind.Field
+
       switch (type) {
         case FileType.McFunction: {
+          completionType = vscode.CompletionItemKind.Function
           identifiers = await this.getFunctionsFromPath(content)
           break
         }
@@ -76,7 +79,7 @@ class CommandHandler {
         }
       }
 
-      // attempt to link to entities which are overwritten
+      // attempt to link to entities which are overwritten, in the current folder
       if (type === FileType.ServerEntityIdentifier) {
         // merge entities with the default ones
         identifiers = [
@@ -88,7 +91,7 @@ class CommandHandler {
       }
 
       completionItems = completionItems.concat(
-        identifiers.map(id => getCompletionItem(id, range))
+        identifiers.map(id => getCompletionItem(id, range, completionType))
       )
     }
 

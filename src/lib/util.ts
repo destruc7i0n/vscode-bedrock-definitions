@@ -2,11 +2,16 @@ import * as vscode from 'vscode'
 
 import { Node, findNodeAtLocation } from 'jsonc-parser'
 
-function getCompletionItem (text: string, range: vscode.Range, description?: string, insertText?: string): vscode.CompletionItem {
+/**
+ * Construct completion item
+ * @param text 
+ * @param range 
+ * @param kind 
+ */
+function getCompletionItem (text: string, range: vscode.Range, kind: vscode.CompletionItemKind = vscode.CompletionItemKind.Value): vscode.CompletionItem {
   const item = new vscode.CompletionItem(text)
-  item.kind = vscode.CompletionItemKind.Value
-  item.detail = description
-  item.insertText = insertText ? insertText : text
+  item.kind = kind
+  item.insertText = text
   item.range = range
   return item
 }

@@ -94,7 +94,7 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       const completionsData = await documentHandler.getAllOfSelectionType()
       if (completionsData && selectionRange) {
         const identifiers = [ ...completionsData.keys() ]
-        return identifiers.map((id) => getCompletionItem(id, selectionRange))
+        return identifiers.map((id) => getCompletionItem(id, selectionRange, vscode.CompletionItemKind.Field))
       }
     }
   }
