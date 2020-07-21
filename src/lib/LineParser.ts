@@ -20,6 +20,7 @@ export type LineInfo = { range: vscode.Range, link: boolean }
 export type SupportedResources = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier | FileType.SoundEffect
 type SupportedUsageType = { type: SupportedResources, prefix?: string, regex: RegExp[], link: boolean }
 
+// an extremely simple line parser, will need to be rewritten in the future
 class LineParser {
   private line: vscode.TextLine
   private lineContent: string

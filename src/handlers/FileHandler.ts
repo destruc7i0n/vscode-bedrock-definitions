@@ -64,6 +64,7 @@ export type DataTypeMap = Map<DataType, Data>
 // the data ids to the data
 export type Data<T = RangeInfo> = Map<string, T>
 export type RangeInfo = { range: vscode.Range }
+export type ReferencesInfo = RangeInfo & { ref: FileType }
 
 class FileHandler {
   private filesCache: FilesData = new Map()
