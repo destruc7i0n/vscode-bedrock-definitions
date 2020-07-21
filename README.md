@@ -53,6 +53,7 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
 <details>
   <summary>Autocomplete</summary>
   <img src="https://raw.githubusercontent.com/destruc7i0n/vscode-bedrock-definitions/master/img/preview2.gif" />
+  <a href="https://streamable.com/r33ona">Longer video example</a>
 </details>
 
 ## Help
