@@ -1,3 +1,5 @@
+import { basename } from 'path'
+
 import * as vscode from 'vscode'
 
 import FileHandler from './FileHandler'
@@ -5,6 +7,10 @@ import Selection from '../lib/Selection'
 import { cleanJson } from '../lib/util'
 
 import { FileType } from '../handlers/FileHandler'
+
+interface DocumentMapping {
+  [key: string]: FileType 
+}
 
 class EditorDocumentHandler {
   private document: vscode.TextDocument
@@ -110,39 +116,51 @@ class EditorDocumentHandler {
    */
   private getDocumentType (document: vscode.TextDocument) {
     let type: FileType = FileType.None
+
+    const fileName = basename(document.fileName)
+
     // check that in client file, to not perform on the definition itself
-    if (document.fileName.endsWith('.json')) {
+    if (fileName.endsWith('.json') || fileName.endsWith('.material')) {
       // don't use jsonc-parser to save time
       const content = cleanJson(document.getText())
 
       if (!content) return type
 
+      const fileNameBasedAssoc: DocumentMapping = {
+        'sound_definitions.json': FileType.SoundEffect,
+      }
+      
+      const fileNameAssoc = fileNameBasedAssoc[fileName]
+      if (fileNameAssoc) return fileNameAssoc
+
       const keys = Object.keys(content)
       // this is not a minecraft document
-      if (!keys.includes('format_version')) return type
+      if (keys.includes('format_version') || keys.includes('materials')) {
+        const pathRoots: DocumentMapping = {
+          'minecraft:client_entity': FileType.ClientEntityIdentifier,
+          'minecraft:entity': FileType.ServerEntityIdentifier,
+          'minecraft:block': FileType.Block,
+          'minecraft:geometry': FileType.Geometry,
+          'animations': FileType.Animation,
+          'animation_controllers': FileType.AnimationController,
+          'render_controllers': FileType.RenderController,
+          'particle_effect': FileType.Particle,
+          'sound_definitions': FileType.SoundEffect,
+          'materials': FileType.Material,
+        }
   
-      const pathRoots: { [key: string]: FileType } = {
-        'minecraft:client_entity': FileType.ClientEntityIdentifier,
-        'minecraft:entity': FileType.ServerEntityIdentifier,
-        'minecraft:geometry': FileType.Geometry,
-        'animations': FileType.Animation,
-        'animation_controllers': FileType.AnimationController,
-        'render_controllers': FileType.RenderController,
-        'particle_effect': FileType.Particle,
-        'sound_definitions': FileType.SoundEffect,
-      }
-
-      for (let pathRoot of Object.keys(pathRoots)) {
-        if (keys.includes(pathRoot)) {
-          type = pathRoots[pathRoot]
+        for (let pathRoot of Object.keys(pathRoots)) {
+          if (keys.includes(pathRoot)) {
+            type = pathRoots[pathRoot]
+          }
+        }
+    
+        if (type === FileType.None) {
+          const isOlderGeometry = keys.some((k) => k.startsWith('geometry.'))
+          if (isOlderGeometry) type = FileType.Geometry
         }
       }
-  
-      if (type === FileType.None) {
-        const isOlderGeometry = keys.some((k) => k.startsWith('geometry.'))
-        if (isOlderGeometry) type = FileType.Geometry
-      }
-    } else if (document.fileName.endsWith('.mcfunction')) type = FileType.McFunction
+    } else if (fileName.endsWith('.mcfunction')) type = FileType.McFunction
 
     return type
   }
