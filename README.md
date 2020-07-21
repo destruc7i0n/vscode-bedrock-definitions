@@ -83,7 +83,3 @@ To develop, install the packages with `yarn install`, open in Visual Studio Code
 ## Contributing
 
 Contributions are welcome!
-
-## License
-
-MIT
