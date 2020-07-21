@@ -89,16 +89,16 @@ class Selection {
   public getSelectionType (): FileType {
     // type, prefix, parent
     const checkGroups: [ FileType, string[] | null, string[] ][] = [
-      [FileType.AnimationController, [ 'controller.animation.' ], [ 'animation_controllers', 'animations' ]],
-      [FileType.RenderController   , [ 'controller.' ]          , [ 'render_controllers' ]                 ],
-      [FileType.Animation          , [ 'animation.' ]           , [ 'animations' ]                         ],
-      [FileType.Geometry           , [ 'geometry.' ]            , [ 'geometry' ]                           ],
-      [FileType.Particle           , null                       , [ 'particle_effects' ]                   ],
-      [FileType.Texture            , null                       , [ 'textures' ]                           ],
-      [FileType.Material           , null                       , [ 'materials' ]                          ],
-      [FileType.ComponentGroup     , null                       , [ 'component_groups' ]                   ],
-      [FileType.Animate            , null                       , [ 'animate' ]                            ],
-      [FileType.SoundEffect        , null                       , [ 'sound_effects' ]                      ],
+      [FileType.AnimationController, [ 'controller.animation.', 'controller.' ], [ 'animation_controllers', 'animations' ]],
+      [FileType.RenderController   , [ 'controller.' ]                         , [ 'render_controllers' ]                 ],
+      [FileType.Animation          , [ 'animation.' ]                          , [ 'animations' ]                         ],
+      [FileType.Geometry           , [ 'geometry.' ]                           , [ 'geometry' ]                           ],
+      [FileType.Particle           , null                                      , [ 'particle_effects' ]                   ],
+      [FileType.Texture            , null                                      , [ 'textures' ]                           ],
+      [FileType.Material           , null                                      , [ 'materials' ]                          ],
+      [FileType.ComponentGroup     , null                                      , [ 'component_groups' ]                   ],
+      [FileType.Animate            , null                                      , [ 'animate' ]                            ],
+      [FileType.SoundEffect        , null                                      , [ 'sound_effects' ]                      ],
     ]
 
     let type: FileType = FileType.None

@@ -115,20 +115,19 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
     const disposableSave = vscode.workspace.onDidSaveTextDocument((document) => {
       const documentHandler = new EditorDocumentHandler(document, null, BedrockProvider.fileHandler)
       if (documentHandler.isResourceDocument()) {
-        log(`Saved resource file "${path.basename(document.uri.path)}", clearing cache for this file...`)
+        log(`File has been saved, updating cache...`)
         documentHandler.refreshCurrentDocument()
       }
     })
 
     const disposableDelete = vscode.workspace.onDidDeleteFiles(({ files }) => {
       for (let file of files) {
-        log(`File has been deleted, clearing cache of all file...`)
+        log(`File has been deleted, clearing from cache...`)
         BedrockProvider.fileHandler.deleteFileFromCache(file)
       }
     })
 
     const logEmptyCacheReason = (action: string) => () => {
-      log(`File has been ${action}, clearing cache of all resource files...`)
       BedrockProvider.fileHandler.emptyCache()
     }
 
