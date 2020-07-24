@@ -32,7 +32,7 @@
         },
         "min_engine_version": {
           "description": "This is the minimum version of the game that this pack was written for. This helps the game identify whether any backwards compatibility is needed for your pack. You should always use the highest version currently available when creating packs",
-          "$ref": "meta.json#/definitions/version_string"
+          "$ref": "meta.json#/definitions/version"
         },
         "lock_template_options": {
           "description": "This option is required for any world templates. This will lock the player from modifying the options of the world.",

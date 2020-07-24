@@ -4,7 +4,10 @@ All notable changes to the "vscode-bedrock-definitions" extension will be docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [2.0.0] - 2020-x
+## [2.0.1] - 2020-07-24
+- Fix `manifest.json` schema
+
+## [2.0.0] - 2020-07-21
 
 - Reorganize and optimize the codebase
 - Added document linking in mcfunction files
