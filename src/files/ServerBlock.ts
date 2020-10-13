@@ -5,7 +5,7 @@ import { FileType } from '../handlers/FileHandler'
 import DescriptionBasedFile from './DescriptionBasedFile'
 
 class ServerBlockFile extends DescriptionBasedFile {
-  type = FileType.ClientEntityIdentifier
+  type = FileType.Block
   static title = 'Block'
   root = 'minecraft:block'
   static glob = `**/blocks/**/*.json`

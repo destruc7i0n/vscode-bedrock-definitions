@@ -1,3 +1,5 @@
+import { FileType } from '../handlers/FileHandler'
+
 import { ResourceFile } from './ResourceFile'
 
 import AnimationFile from './Animation'
@@ -25,3 +27,19 @@ export {
   SoundEffectFile,
   ServerBlockFile,
 }
+
+export type Files =
+  AnimationControllerFile
+  | AnimationFile
+  | ClientEntityDefinitionFile
+  | GeometryFile
+  | MaterialFile
+  | ParticleFile
+  | RenderControllerFile
+  | ServerEntityDefinitionFile
+  | SoundEffectFile
+  | ServerBlockFile
+
+export type SupportedFileTypes = Files['type']
+// export type SupportedFileTypes = Files['type'] & FileType.McFunction
+export type FileByType<T extends FileType> = Extract<Files, { type: T }>

@@ -31,25 +31,25 @@ class LineParser {
   private supportedCommands: SupportedUsageType[] = [
     {
       type: FileType.McFunction,
-      regex: [new RegExp(`function ${FILE_LOCATION.source}`)],
+      regex: [new RegExp(`function ${FILE_LOCATION.source}`, 'g')],
       link: true
     },
     {
       type: FileType.Particle,
-      regex: [new RegExp(`particle ${RESOURCE_ID.source}`)],
+      regex: [new RegExp(`particle ${RESOURCE_ID.source}`, 'g')],
       link: true
     },
     {
       type: FileType.ServerEntityIdentifier,
-      regex: [new RegExp(`summon ${RESOURCE_ID.source}`)],
+      regex: [new RegExp(`summon ${RESOURCE_ID.source}`, 'g')],
       link: true
     },
     // sound definitions
     {
       type: FileType.SoundEffect,
       regex: [
-        new RegExp(`playsound ${RESOURCE_ID.source}`),
-        new RegExp(`stopsound ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`)
+        new RegExp(`playsound ${RESOURCE_ID.source}`, 'g'),
+        new RegExp(`stopsound ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`, 'g')
       ],
       link: false
     },
