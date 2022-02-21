@@ -3,7 +3,7 @@
   "displayName": "Bedrock Definitions",
   "description": "Go-to definitions and auto-complete for Minecraft Bedrock Edition",
   "icon": "icon.png",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "engines": {
     "vscode": "^1.37.0"
   },
@@ -44,12 +44,6 @@
       {
         "command": "bedrock-definitions.refreshCache",
         "title": "Bedrock Definitions: Refresh Cache"
-      }
-    ],
-    "jsonValidation": [
-      {
-        "fileMatch": "/manifest.json",
-        "url": "./schemas/manifest.json"
       }
     ]
   },
