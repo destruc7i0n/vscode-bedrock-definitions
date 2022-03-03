@@ -4,7 +4,7 @@ import { Node } from 'jsonc-parser'
 
 import { FileType } from '../handlers/FileHandler'
 
-import KeyBasedFile from './KeyBasedFile'
+import KeyBasedFile from './types/KeyBasedFile'
 
 class SoundEffectFile extends KeyBasedFile {
   type = FileType.SoundEffect

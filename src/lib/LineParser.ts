@@ -5,7 +5,7 @@ import { removeEndingQuote } from './util'
 
 /* Credit to https://github.com/Arcensoth/language-mcfunction for some regex */
 const RESOURCE_ID = /((?:[a-z0-9_\.\-]+):?(?:[a-z0-9_\.\-]+)*)/
-export const FILE_LOCATION = /([a-z0-9_\.\-\/]+)/
+export const FILE_LOCATION = /([\w\.\-\/]+)/
 export const MCFUNCTION_PATH_MATCH = new RegExp(`functions/${FILE_LOCATION.source}.mcfunction`)
 
 const SELECTOR_ARGUMENTS_REGEX = /(?<=@[a-z]\[)(?:([^\]]*))?(?=\]|$)/g
@@ -179,10 +179,10 @@ class LineParser {
     index++
 
     // string starting index + current index + index that the selector is starting
-    const valueStartIndex = this.lineStartIndex + index + startIndex
+    let valueStartIndex = this.lineStartIndex + index + startIndex
     let value = ''
     // while not at the end of a key
-    if (trimmedKey === 'scores') {
+    if (trimmedKey === 'scores' || trimmedKey === 'hasitem') {
       index++ // the first curly bracket
       while (index < input.length && input.charAt(index) !== '}') {
         value += input.charAt(index)
@@ -198,12 +198,20 @@ class LineParser {
     }
 
     // remove any spaces around
-    const trimmedValue = value.trim()
+    let trimmedValue = value.trim()
+    let valueLength = value.length
+
+    // ingore negation characters
+    if (trimmedValue.charAt(0) === '!') {
+      trimmedValue = trimmedValue.substring(1)
+      valueStartIndex += 1
+      valueLength -= 1
+    }
 
     // construct the range from the position
     const valueRange = new vscode.Range(
       new vscode.Position(this.line.lineNumber, valueStartIndex),
-      new vscode.Position(this.line.lineNumber, valueStartIndex + value.length)
+      new vscode.Position(this.line.lineNumber, valueStartIndex + valueLength)
     )
 
     selectorLoop:

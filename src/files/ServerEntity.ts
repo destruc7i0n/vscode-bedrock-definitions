@@ -4,7 +4,7 @@ import { Node } from 'jsonc-parser'
 
 import { Data, DataType, FileType } from '../handlers/FileHandler'
 
-import DescriptionBasedFile from './DescriptionBasedFile'
+import DescriptionBasedFile from './types/DescriptionBasedFile'
 
 import { getRangeFromPath } from '../lib/util'
 import { getAndParseFileContents } from '../lib/files'

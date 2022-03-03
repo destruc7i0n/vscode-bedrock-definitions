@@ -2,9 +2,9 @@ import * as vscode from 'vscode'
 
 import { Node } from 'jsonc-parser'
 
-import { FileType, Data, DataTypeMap, DataType } from '../handlers/FileHandler'
+import { FileType, Data, DataTypeMap, DataType } from '../../handlers/FileHandler'
 
-import { getAndParseFileContents, getOrderedFilesFromGlob } from '../lib/files'
+import { getAndParseFileContents, getOrderedFilesFromGlob } from '../../lib/files'
 
 export interface BaseFile {
   format_version: string

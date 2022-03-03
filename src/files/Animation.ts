@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 import { FileType } from '../handlers/FileHandler'
 
-import KeyBasedFile from './KeyBasedFile'
+import KeyBasedFile from './types/KeyBasedFile'
 
 class AnimationFile extends KeyBasedFile {
   type = FileType.Animation

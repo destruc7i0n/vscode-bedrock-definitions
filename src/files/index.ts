@@ -1,6 +1,6 @@
 import { FileType } from '../handlers/FileHandler'
 
-import { ResourceFile } from './ResourceFile'
+import { ResourceFile } from './types/ResourceFile'
 
 import AnimationFile from './Animation'
 import AnimationControllerFile from './AnimationController'

@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 import { FileType } from '../handlers/FileHandler'
 
-import DescriptionBasedFile from './DescriptionBasedFile'
+import DescriptionBasedFile from './types/DescriptionBasedFile'
 
 class ClientEntityFile extends DescriptionBasedFile {
   type = FileType.ClientEntityIdentifier

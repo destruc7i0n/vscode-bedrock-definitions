@@ -2,10 +2,10 @@ import * as vscode from 'vscode'
 
 import { Node } from 'jsonc-parser'
 
-import { Data } from '../handlers/FileHandler'
+import { Data } from '../../handlers/FileHandler'
 import { ResourceFile } from './ResourceFile'
 
-import { getRangeFromPath } from '../lib/util'
+import { getRangeFromPath } from '../../lib/util'
 
 /**
  * Handles files where there are keys being the identifier,

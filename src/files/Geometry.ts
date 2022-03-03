@@ -3,7 +3,7 @@ import * as vscode from 'vscode'
 import { Node } from 'jsonc-parser'
 
 import { Data, FileType } from '../handlers/FileHandler'
-import { ResourceFile } from './ResourceFile'
+import { ResourceFile } from './types/ResourceFile'
 
 import { getRangeFromPath } from '../lib/util'
 

@@ -4,6 +4,11 @@ All notable changes to the "vscode-bedrock-definitions" extension will be docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [2.0.4] - 2022-03-03
+- Support capital letters in fns ([#9](https://github.com/destruc7i0n/vscode-bedrock-definitions/issues/9))
+- Support autocomplete with `!` in the entity selector
+- Updated entity list to beta 1.18.20.23
+
 ## [2.0.2] - 2020-10-13
 - Fix text completion
 
