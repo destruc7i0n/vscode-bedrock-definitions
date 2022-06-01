@@ -1,11 +1,12 @@
 import * as vscode from 'vscode'
 
-import { Data, FileType } from '../handlers/FileHandler'
+import { Data, DataType, FileType } from '../handlers/FileHandler'
 import { removeEndingQuote } from './util'
 
 /* Credit to https://github.com/Arcensoth/language-mcfunction for some regex */
 const RESOURCE_ID = /((?:[a-z0-9_\.\-]+):?(?:[a-z0-9_\.\-]+)*)/
 export const FILE_LOCATION = /([\w\.\-\/]+)/
+export const ANIMATION_MATCH = /(animation\..*)/
 export const MCFUNCTION_PATH_MATCH = new RegExp(`functions/${FILE_LOCATION.source}.mcfunction`)
 
 const SELECTOR_ARGUMENTS_REGEX = /(?<=@[a-z]\[)(?:([^\]]*))?(?=\]|$)/g
@@ -13,12 +14,12 @@ const SELECTOR_REGEX_NO_GROUP = /@[a-z](?:\[[^\]]*\])?/g
 
 const LOCATION_REGEX = /(?:[\~\^](?:\-?\d*\.?\d+)? *){3}/
 
-export type Usage = Map<SupportedResources, UsageData>
+export type Usage = Map<SupportedTypes, UsageData>
 export type UsageData = Data<LineInfo[]>
 export type LineInfo = { range: vscode.Range, link: boolean }
 
-export type SupportedResources = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier | FileType.SoundEffect
-type SupportedUsageType = { type: SupportedResources, prefix?: string, regex: RegExp[], link: boolean }
+export type SupportedTypes = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier | FileType.SoundEffect | FileType.Animation | DataType.ServerEntityEvents
+type SupportedUsageType = { type: SupportedTypes, prefix?: string, regex: RegExp[], link: boolean }
 
 // an extremely simple line parser, will need to be rewritten in the future
 class LineParser {
@@ -40,8 +41,18 @@ class LineParser {
       link: true
     },
     {
+      type: DataType.ServerEntityEvents,
+      regex: [new RegExp(`event entity ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`, 'g')],
+      link: true
+    },
+    {
       type: FileType.ServerEntityIdentifier,
       regex: [new RegExp(`summon ${RESOURCE_ID.source}`, 'g')],
+      link: true
+    },
+    {
+      type: FileType.Animation,
+      regex: [new RegExp(`playanimation ${SELECTOR_REGEX_NO_GROUP.source} ${ANIMATION_MATCH.source}`, 'g')],
       link: true
     },
     // sound definitions

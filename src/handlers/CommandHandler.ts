@@ -1,10 +1,10 @@
 import * as vscode from 'vscode'
 
-import FileSearcher from './FileHandler'
+import FileSearcher, { DataType } from './FileHandler'
 
 import { FileType } from '../handlers/FileHandler'
 
-import LineParser, { SupportedResources, Usage, UsageData, MCFUNCTION_PATH_MATCH } from '../lib/LineParser'
+import LineParser, { SupportedTypes, Usage, UsageData, MCFUNCTION_PATH_MATCH } from '../lib/LineParser'
 import { getCompletionItem, getDocumentLink } from '../lib/util'
 import VanillaEntities from '../lib/defaults'
 
@@ -32,9 +32,14 @@ class CommandHandler {
             typeLinks = await this.getFunctionLinksFromUsages(usage)
             break
           }
+          case DataType.ServerEntityEvents: {
+            // we don't know which entity to go to!
+            break
+          }
+          case FileType.Animation:
           case FileType.Particle:
           case FileType.ServerEntityIdentifier: {
-            typeLinks = await this.getLinksFromFilesSearch(usage, searcher, type)
+            typeLinks = await this.getLinksFromFilesSearch(usage, searcher, type as FileType)
             break
           }
         }
@@ -70,6 +75,12 @@ class CommandHandler {
           identifiers = await this.getFunctionsFromPath(content)
           break
         }
+        case DataType.ServerEntityEvents: {
+          const usages = await searcher.getAllOfTypeByDataType(FileType.ServerEntityIdentifier, DataType.ServerEntityEvents)
+          identifiers = [ ...usages.keys() ]
+          break
+        }
+        case FileType.Animation:
         case FileType.SoundEffect:
         case FileType.Particle:
         case FileType.ServerEntityIdentifier: {
@@ -107,6 +118,7 @@ class CommandHandler {
     for (let num = 0; num < this.document.lineCount; num++) {
       const line = this.document.lineAt(num)
       const lineParser = new LineParser(line)
+
       for (let [ type, uses ] of lineParser.usages) {
         if (!usages.has(type)) usages.set(type, new Map())
         const typeUsages = usages.get(type)!
@@ -190,18 +202,21 @@ class CommandHandler {
    * @param searcher the file searcher
    * @param type the type of file to search
    */
-  private async getLinksFromFilesSearch (calls: UsageData, searcher: FileSearcher, type: SupportedResources) {
+  private async getLinksFromFilesSearch (calls: UsageData, searcher: FileSearcher, type: FileType) {
     const links: vscode.DocumentLink[] = []
 
     for (let [ resourceId, usages ] of calls) {
       // if there is no namespace, assume vanilla entity
-      if (resourceId.split(':').length === 1) resourceId = `minecraft:${resourceId}`
+      if (type !== FileType.Animation) {
+        if (resourceId.split(':').length === 1) resourceId = `minecraft:${resourceId}`
+      }
 
       const file = await searcher.findByIndentifier(type, resourceId)
 
       if (file) {
-        for (let { range, link } of usages)
-          if (link) links.push(getDocumentLink(file.uri, range, this.getTooltip(type)))
+        for (let { range, link } of usages) {
+          if (link) links.push(getDocumentLink(file.uri, range, this.getTooltip(type as SupportedTypes)))
+        }
       }
     }
 
@@ -212,14 +227,16 @@ class CommandHandler {
    * Get tooltip for link
    * @param type tooltip type
    */
-  private getTooltip (type: SupportedResources) {
-    const name: Map<SupportedResources, string> = new Map([
-      [ FileType.McFunction, 'function'],
-      [ FileType.ServerEntityIdentifier, 'entity'],
-      [ FileType.Particle, 'particle'],
-      [ FileType.SoundEffect, 'sound'],
-    ])
-    return `Go to ${name.get(type)!} definition`
+  private getTooltip (type: SupportedTypes) {
+    const name: { [key in SupportedTypes]: string } = {
+      [FileType.McFunction]: 'function',
+      [FileType.ServerEntityIdentifier]: 'entity',
+      [FileType.Particle]: 'particle',
+      [FileType.SoundEffect]: 'sound',
+      [DataType.ServerEntityEvents]: 'entity event',
+      [FileType.Animation]: 'animation',
+    }
+    return `Go to ${name[type]} definition`
   }
 }
 
