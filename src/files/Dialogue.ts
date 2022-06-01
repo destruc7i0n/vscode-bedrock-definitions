@@ -44,8 +44,6 @@ class DialogueFile extends ResourceFile {
       }
     }
 
-    console.log(response)
-
     return response
   }
 }
