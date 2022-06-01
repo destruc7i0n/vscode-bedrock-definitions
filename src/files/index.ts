@@ -12,6 +12,7 @@ import RenderControllerFile from './RenderController'
 import ServerEntityDefinitionFile from './ServerEntity'
 import SoundEffectFile from './SoundEffect'
 import ServerBlockFile from './ServerBlock'
+import DialogueFile from './Dialogue'
 
 export {
   ResourceFile,
@@ -26,6 +27,7 @@ export {
   ServerEntityDefinitionFile,
   SoundEffectFile,
   ServerBlockFile,
+  DialogueFile,
 }
 
 export type Files =
@@ -39,6 +41,7 @@ export type Files =
   | ServerEntityDefinitionFile
   | SoundEffectFile
   | ServerBlockFile
+  | DialogueFile
 
 export type SupportedFileTypes = Files['type']
 // export type SupportedFileTypes = Files['type'] & FileType.McFunction

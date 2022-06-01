@@ -94,7 +94,12 @@ class EditorDocumentHandler {
    * Checks if the document can be handled for command related stuff
    */
   public shouldHandleCommandCalls () {
-    return [FileType.McFunction, FileType.Animation, FileType.AnimationController].includes(this.type)
+    return [
+      FileType.McFunction,
+      FileType.Animation,
+      FileType.AnimationController,
+      FileType.Dialogue,
+    ].includes(this.type)
   }
 
   /**
@@ -141,6 +146,7 @@ class EditorDocumentHandler {
           'minecraft:entity': FileType.ServerEntityIdentifier,
           'minecraft:block': FileType.Block,
           'minecraft:geometry': FileType.Geometry,
+          'minecraft:npc_dialogue': FileType.Dialogue,
           'animations': FileType.Animation,
           'animation_controllers': FileType.AnimationController,
           'render_controllers': FileType.RenderController,

@@ -13,7 +13,8 @@ import {
   RenderControllerFile,
   ServerEntityDefinitionFile,
   SoundEffectFile,
-  ServerBlockFile
+  ServerBlockFile,
+  DialogueFile,
 } from '../files'
 
 type HandlerType = typeof ResourceFile & (new (uri: vscode.Uri) => ResourceFile)
@@ -37,6 +38,7 @@ export enum FileType {
   Animate,
   SoundEffect,
   Block,
+  Dialogue,
 
   McFunction,
 }
@@ -76,6 +78,7 @@ class FileHandler {
     [ FileType.Material, MaterialFile ],
     [ FileType.Animation, AnimationFile ],
     [ FileType.AnimationController, AnimationControllerFile ],
+    [ FileType.Dialogue, DialogueFile ],
     [ FileType.RenderController, RenderControllerFile ],
     [ FileType.ServerEntityIdentifier, ServerEntityDefinitionFile ],
     [ FileType.ClientEntityIdentifier, ClientEntityDefinitionFile ],
@@ -153,6 +156,7 @@ class FileHandler {
     if (!typeMap.has(file.path)) {
       const Handler = this.getFileHandler(type)
       if (Handler) {
+        // @ts-ignore
         const handler = new Handler(file)
         await handler.extract()
         typeMap.set(file.path, handler)
