@@ -4,6 +4,12 @@ All notable changes to the "vscode-bedrock-definitions" extension will be docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [2.0.5] - 2022-06-01
+- Support for functions in dialogue files
+- Autocomplete for events in the event command
+- Autocomplete and go to definition (**file**) for animation
+  - Cannot go to animation definition range directly due to limitations of `vscode.DocumentLink`
+
 ## [2.0.4] - 2022-03-03
 - Support capital letters in fns ([#9](https://github.com/destruc7i0n/vscode-bedrock-definitions/issues/9))
 - Support autocomplete with `!` in the entity selector
