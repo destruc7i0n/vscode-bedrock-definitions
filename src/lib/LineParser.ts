@@ -4,13 +4,14 @@ import { Data, DataType, FileType } from '../handlers/FileHandler'
 import { removeEndingQuote } from './util'
 
 /* Credit to https://github.com/Arcensoth/language-mcfunction for some regex */
-const RESOURCE_ID = /((?:[a-z0-9_\.\-]+):?(?:[a-z0-9_\.\-]+)*)/
+const IDENTIFIER = /[a-z0-9_\.\-]+/
+const RESOURCE_ID = new RegExp(`((?:${IDENTIFIER.source}):?(?:${IDENTIFIER.source})*)`)
 export const FILE_LOCATION = /([\w\.\-\/]+)/
-export const ANIMATION_MATCH = /(animation\..*)/
+export const ANIMATION_MATCH = /(animation\.[\w\.\-]+)/
 export const MCFUNCTION_PATH_MATCH = new RegExp(`functions/${FILE_LOCATION.source}.mcfunction`)
 
 const SELECTOR_ARGUMENTS_REGEX = /(?<=@[a-z]\[)(?:([^\]]*))?(?=\]|$)/g
-const SELECTOR_REGEX_NO_GROUP = /@[a-z](?:\[[^\]]*\])?/g
+const SELECTOR_REGEX_NO_GROUP = /@(?:initiator|[a-z])(?:\[[^\]]*\])?/g
 
 const LOCATION_REGEX = /(?:[\~\^](?:\-?\d*\.?\d+)? *){3}/
 
@@ -18,7 +19,14 @@ export type Usage = Map<SupportedTypes, UsageData>
 export type UsageData = Data<LineInfo[]>
 export type LineInfo = { range: vscode.Range, link: boolean }
 
-export type SupportedTypes = FileType.McFunction | FileType.Particle | FileType.ServerEntityIdentifier | FileType.SoundEffect | FileType.Animation | DataType.ServerEntityEvents
+export type SupportedTypes =
+  FileType.McFunction |
+  FileType.Particle |
+  FileType.ServerEntityIdentifier |
+  FileType.SoundEffect |
+  FileType.Animation |
+  FileType.Dialogue |
+  DataType.ServerEntityEvents
 type SupportedUsageType = { type: SupportedTypes, prefix?: string, regex: RegExp[], link: boolean }
 
 // an extremely simple line parser, will need to be rewritten in the future
@@ -55,6 +63,14 @@ class LineParser {
       regex: [new RegExp(`playanimation ${SELECTOR_REGEX_NO_GROUP.source} ${ANIMATION_MATCH.source}`, 'g')],
       link: true
     },
+    {
+      type: FileType.Dialogue,
+      regex: [
+        new RegExp(`dialogue open ${SELECTOR_REGEX_NO_GROUP.source} ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g'),
+        new RegExp(`dialogue change ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g')
+      ],
+      link: true
+    },
     // sound definitions
     {
       type: FileType.SoundEffect,
@@ -84,16 +100,23 @@ class LineParser {
 
   /**
    * Find usage on the line that is where the cursor is at
-   * @param position the position of the cursor
+   * @param cursorPosition the position of the cursor
    */
-  public getUsageAtCursorPosition (position: vscode.Position) {
+  public getUsageAtCursorPosition (cursorPosition: vscode.Position) {
     for (let [ type, usages ] of this.usages) {
       for (let [ content, ranges ] of usages) {
         for (let { range } of ranges) {
-          if (range.contains(position)) {
+          if (range.contains(cursorPosition)) {
+            const rangeUntilCursor = range.with({ 
+              end: new vscode.Position(
+                range.end.line,
+                // don't go past the cursor
+                Math.min(range.end.character, cursorPosition.character)
+              )
+            })
             return {
               content,
-              range,
+              range: rangeUntilCursor,
               type,
             }
           }

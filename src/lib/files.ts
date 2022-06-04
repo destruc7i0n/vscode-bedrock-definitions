@@ -5,8 +5,8 @@ import * as vscode from 'vscode'
 import { Node, parse, parseTree } from 'jsonc-parser'
 
 interface FileContent {
-  node: Node | null,
-  data: any,
+  node?: Node,
+  data?: any,
   document: vscode.TextDocument
 }
 
@@ -28,8 +28,6 @@ async function getAndParseFileContents (file: vscode.Uri): Promise<FileContent> 
   } catch (e) {
     return {
       document,
-      data: null,
-      node: null
     }
   }
 }

@@ -36,6 +36,7 @@ class CommandHandler {
             // we don't know which entity to go to!
             break
           }
+          case FileType.Dialogue:
           case FileType.Animation:
           case FileType.Particle:
           case FileType.ServerEntityIdentifier: {
@@ -76,10 +77,12 @@ class CommandHandler {
           break
         }
         case DataType.ServerEntityEvents: {
+          completionType = vscode.CompletionItemKind.Event
           const usages = await searcher.getAllOfTypeByDataType(FileType.ServerEntityIdentifier, DataType.ServerEntityEvents)
           identifiers = [ ...usages.keys() ]
           break
         }
+        case FileType.Dialogue:
         case FileType.Animation:
         case FileType.SoundEffect:
         case FileType.Particle:
@@ -206,8 +209,9 @@ class CommandHandler {
     const links: vscode.DocumentLink[] = []
 
     for (let [ resourceId, usages ] of calls) {
-      // if there is no namespace, assume vanilla entity
-      if (type !== FileType.Animation) {
+      const isNamespaced = [FileType.Particle, FileType.ServerEntityIdentifier].includes(type)
+      if (isNamespaced) {
+        // if there is no namespace, assume vanilla identifier
         if (resourceId.split(':').length === 1) resourceId = `minecraft:${resourceId}`
       }
 
@@ -228,15 +232,28 @@ class CommandHandler {
    * @param type tooltip type
    */
   private getTooltip (type: SupportedTypes) {
-    const name: { [key in SupportedTypes]: string } = {
+    const typeNames: { [key in SupportedTypes]: string } = {
       [FileType.McFunction]: 'function',
       [FileType.ServerEntityIdentifier]: 'entity',
       [FileType.Particle]: 'particle',
-      [FileType.SoundEffect]: 'sound',
+      [FileType.SoundEffect]: 'sound definition',
       [DataType.ServerEntityEvents]: 'entity event',
       [FileType.Animation]: 'animation',
+      [FileType.Dialogue]: 'dialogue',
     }
-    return `Go to ${name[type]} definition`
+
+    const typeName = typeNames[type]
+    switch (type) {
+      case FileType.SoundEffect:
+      case DataType.ServerEntityEvents:
+      case FileType.Dialogue:
+      case FileType.Animation: {
+        return `Go to ${typeName} file`
+      }
+      default: {
+        return `Go to ${typeName} definition`
+      }
+    }
   }
 }
 

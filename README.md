@@ -25,6 +25,8 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
     - Functions
     - Particles
     - Entities
+    - Dialogue Files
+    - Animation Files
 
 - Auto-complete works for the following types of definitions
   - Client definitions
@@ -36,10 +38,13 @@ Go-to Bedrock definitions and auto-complete for Visual Studio Code
   - Server (Behaviour) definitions 
     - Animations / Animation Controllers
   - mcfunction files
-    - Functions
-    - Particles
-    - Entities
-    - Sounds
+    - Functions (`/function`)
+    - Particles (`/particle`)
+    - Entities (`/summon` and in entity selectors, `@e[type=<entity>]`)
+    - Sounds (`/playsound`)
+    - Entity Events (`/event entity`)
+    - Dialogues (`/dialogue`)
+    - Animations (`/playanimation`)
 
 <sub><sup>*If the behaviour pack counterpart is open in the workspace</sup></sub>
 
