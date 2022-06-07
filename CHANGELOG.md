@@ -4,6 +4,9 @@ All notable changes to the "vscode-bedrock-definitions" extension will be docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [2.0.7] - 2022-06-07
+- Updated function autocomplete
+
 ## [2.0.6] - 2022-06-03
 - Made autocomplete for commands not replace text after cursor
 - Improved regex for playanimation

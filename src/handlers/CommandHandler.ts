@@ -142,18 +142,14 @@ class CommandHandler {
    * @param functionPath path to list functions from
    */
   public async getFunctionsFromPath (functionPath: string) {
-    let id = functionPath
-    let glob = ''
-
-    if (id.includes('/')) {
-      // remove the final forward slash if any
-      if (id.endsWith('/')) id = id.substring(0, id.length - 1)
-      // search using this as a prefix
-      glob = `**/functions/${id}/**/*.mcfunction`
-    } else {
-      // a search by partial name
-      glob = `**/functions/**/*${id}*.mcfunction`
-    }
+    // find either files or folder that have the 
+    const globs = [
+      // either a file
+      `**/*${functionPath}*.mcfunction`,
+      // or a folder
+      `**/*${functionPath}*/*.mcfunction`,
+    ]
+    const glob = `{${globs.join(',')}}`
 
     const found = await vscode.workspace.findFiles(glob)
 

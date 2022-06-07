@@ -33,6 +33,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // only enable if bedrock workspace
   if (!(await isBedrockWorkspace())) {
     log('Could not find a `manifest.json`. Bedrock Definitions\' functionality has been disabled.')
+    return
   }
 
   log('Now active')
