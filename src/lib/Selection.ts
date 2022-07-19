@@ -68,7 +68,7 @@ class Selection {
    * Returns the current text and word range
    */
   public getSelectionText (document: vscode.TextDocument, position: vscode.Position): { text: string, range: vscode.Range } {
-    let range = document.getWordRangeAtPosition(position) as vscode.Range
+    let range = document.getWordRangeAtPosition(position, /[\w\.\-\:]+/) as vscode.Range
     let text = document.getText(range)
 
     // remove quotes
@@ -108,7 +108,7 @@ class Selection {
       let usingPrefix = false
       let isChild = false
 
-      if (prefixes) usingPrefix = !!prefixes.find(p => this.text.startsWith(p))
+      if (prefixes) usingPrefix = prefixes.some(p => this.text.startsWith(p))
       if (parentKeys && typeof this.parent === 'string') isChild = parentKeys.includes(this.parent)
 
       if (parentKeys && prefixes) {
