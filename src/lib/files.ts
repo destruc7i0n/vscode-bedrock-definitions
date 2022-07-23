@@ -33,6 +33,7 @@ async function getAndParseFileContents (file: vscode.Uri): Promise<FileContent> 
 }
 
 /**
+ * @deprecated no longer used
  * Get and order the files from the glob pattern provided
  * @param glob the glob to find files from
  */
@@ -41,6 +42,7 @@ async function getOrderedFilesFromGlob (glob: vscode.GlobPattern): Promise<vscod
 }
 
 /**
+ * @deprecated no longer used
  * Orders the provided files by the distance from the current active file
  * @param files the files to order
  */

@@ -1,5 +1,4 @@
 import * as vscode from 'vscode'
-import * as path from 'path'
 
 import EditorDocumentHandler from './handlers/EditorDocumentHandler'
 import FileHandler, { FileType, BehaviourDefinitionType, LocationData } from './handlers/FileHandler'
@@ -75,7 +74,12 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
     } else return
 
     if (!location) {
-      const searchResult = await documentHandler.getDefinitionOfSelection()
+      const selectionType = documentHandler.getSelectionType()
+      const selectionText = documentHandler.getSelectionText()
+      const packTypes = documentHandler.getExpectedPackTypes()
+      if (!selectionType || !selectionText) return
+
+      const searchResult = await BedrockProvider.fileHandler.findByIndentifier(selectionType, selectionText, packTypes)
       if (searchResult) location = searchResult
     }
 
@@ -91,7 +95,11 @@ export default class BedrockProvider implements vscode.DefinitionProvider, vscod
       return await commandHandler.getCompletionItems(position, BedrockProvider.fileHandler)
     } else if (documentHandler.shouldHandleSelection()) {
       const selectionRange = documentHandler.getSelectionRange()
-      const completionsData = await documentHandler.getAllOfSelectionType()
+      const selectionType = documentHandler.getSelectionType()
+      if (!selectionType) return
+
+      const expectedPackTypes = documentHandler.getExpectedPackTypes()
+      const completionsData = await BedrockProvider.fileHandler.getIdentifiersByFileType(selectionType, expectedPackTypes)
       if (completionsData && selectionRange) {
         const identifiers = [ ...completionsData.keys() ]
         return identifiers.map((id) => getCompletionItem(id, selectionRange, vscode.CompletionItemKind.Field))

@@ -2,9 +2,9 @@ import { basename } from 'path'
 
 import * as vscode from 'vscode'
 
-import FileHandler from './FileHandler'
+import FileHandler, { ResourceFilePackType } from './FileHandler'
 import Selection from '../lib/Selection'
-import { cleanJson } from '../lib/util'
+import { cleanJson, guessPackTypeFromDocument } from '../lib/util'
 
 import { FileType } from '../handlers/FileHandler'
 
@@ -53,32 +53,26 @@ class EditorDocumentHandler {
     return this.selection?.range
   }
 
-  /**
-   * Wrapper around the file searcher
-   * @param type the type to search for
-   * @param uri optional uri
-   */
-  public async findAllIdentifiersOfType (type: FileType) {
-    return await this.fileHandler.getIdentifiersByFileType(type)
-  }
-
-  /**
-   * Returns all which match the selection type
-   */
-  public async getAllOfSelectionType () {
+  public getExpectedPackTypes (): ResourceFilePackType[] | undefined {
     const selectionType = this.getSelectionType()
-    if (!selectionType) return
-    return await this.findAllIdentifiersOfType(selectionType)
-  }
+    const documentPackType = this.getDocumentPackType()
 
-  /**
-   * Returns the defintion location of the current selection
-   */
-  public getDefinitionOfSelection () {
-    const selectionType = this.getSelectionType()
-    const selectionText = this.getSelectionText()
-    if (!selectionType || !selectionText) return
-    return this.fileHandler.findByIndentifier(selectionType, selectionText)
+    // always show unknown ones
+    const expectedPackTypes = [ ResourceFilePackType.Unknown ]
+
+    // try and only get items that have the same pack type as the current document
+    switch (selectionType) {
+      case FileType.Animation:
+      case FileType.AnimationController: {
+        expectedPackTypes.push(documentPackType)
+        break
+      }
+      default: {
+        break
+      }
+    }
+
+    if (expectedPackTypes.length > 1) return expectedPackTypes
   }
 
   /**
@@ -107,6 +101,14 @@ class EditorDocumentHandler {
    */
   public isResourceDocument () {
     return ![FileType.None, FileType.McFunction].includes(this.type)
+  }
+
+  /**
+   * Guesses the pack type of the current document
+   * @returns the current document's pack type
+   */
+  public getDocumentPackType () {
+    return guessPackTypeFromDocument(this.document)
   }
 
   /**

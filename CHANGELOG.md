@@ -4,6 +4,14 @@ All notable changes to the "vscode-bedrock-definitions" extension will be docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [2.0.8] - 2022-07-22
+- Fixed completions and definitions not populating in JSON files
+  - This was due to VSCode [changing the word pattern for JSON](https://code.visualstudio.com/updates/v1_69#_json-word-pattern-change)
+- Made resource completions only show resources from the current pack (i.e. behaviour pack animations will not be provided as a completion in resource pack entity files)
+  - Made animation completions in `/playanimation` only show resource pack animations
+- Stopped showing links for animations and dialogues in `/playanimation` and `/dialogue` respectively (but still provide autocompletions)
+- Show definition updating status more prominently
+
 ## [2.0.7] - 2022-06-07
 - Updated function autocomplete
 

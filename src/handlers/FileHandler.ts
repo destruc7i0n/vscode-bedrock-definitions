@@ -48,6 +48,12 @@ export enum BehaviourDefinitionType {
   ComponentGroups,
 }
 
+export enum ResourceFilePackType {
+  Unknown,
+  Behaviour,
+  Resource,
+}
+
 export type LocationData = { uri: vscode.Uri, range: vscode.Range, resourceFile: ResourceFile }
 export type DefinitionLocation = Map<string, LocationData>
 
@@ -65,7 +71,7 @@ export type FileData = Map<string, ResourceFile>
 export type DataTypeMap = Map<DataType, Data>
 // the data ids to the data
 export type Data<T = RangeInfo> = Map<string, T>
-export type RangeInfo = { range: vscode.Range }
+export type RangeInfo = { range: vscode.Range } & { [additionalProperties: string]: any }
 export type ReferencesInfo = RangeInfo & { ref: FileType }
 
 class FileHandler {
@@ -176,7 +182,7 @@ class FileHandler {
 
       // show progress while getting all the files
       await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Window,
+        location: vscode.ProgressLocation.Notification,
         title: `Updating Bedrock Definitions for "${Handler.title}"...`
       }, async () => {
         for await (let file of gen) {
@@ -214,8 +220,9 @@ class FileHandler {
    * Filters the data by specific data type
    * @param type the type to get
    * @param dataType the specific data to get
+   * @param packTypes the types of pack to get
    */
-  public async getAllOfTypeByDataType (type: FileType, dataType: DataType) {
+  public async getAllOfTypeByDataType (type: FileType, dataType: DataType, packTypes?: ResourceFilePackType[]) {
     let map: DefinitionLocation = new Map()
 
     const fileData = await this.getAllByType(type)
@@ -223,6 +230,8 @@ class FileHandler {
       const data = resourceFile.get(dataType)
       if (data) {
         for (let [ id, info ] of data) {
+          if (packTypes && !packTypes.includes(resourceFile.packType)) continue
+
           map.set(id, {
             range: info.range,
             uri: vscode.Uri.file(file),
@@ -239,18 +248,20 @@ class FileHandler {
   /**
    * Returns all identifiers of a type specified
    * @param type the type to find
+   * @param packTypes the types of pack to get
    */
-  public async getIdentifiersByFileType (type: FileType) {
-    return await this.getAllOfTypeByDataType(type, DataType.Definition)
+  public async getIdentifiersByFileType (type: FileType, packTypes?: ResourceFilePackType[]) {
+    return await this.getAllOfTypeByDataType(type, DataType.Definition, packTypes)
   }
 
   /**
    * Find a specific identifier
    * @param type the type to search
    * @param identifier the specific id
+   * @param packTypes the types of pack to get
    */
-  public async findByIndentifier (type: FileType, identifier: string) {
-    const data = await this.getIdentifiersByFileType(type)
+  public async findByIndentifier (type: FileType, identifier: string, packTypes?: ResourceFilePackType[]) {
+    const data = await this.getIdentifiersByFileType(type, packTypes)
     const identifiers = [ ...data.keys() ]
   
     // model and materials may be parented etc

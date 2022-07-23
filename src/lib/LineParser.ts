@@ -51,7 +51,7 @@ class LineParser {
     {
       type: DataType.ServerEntityEvents,
       regex: [new RegExp(`event entity ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`, 'g')],
-      link: true
+      link: false
     },
     {
       type: FileType.ServerEntityIdentifier,
@@ -61,7 +61,7 @@ class LineParser {
     {
       type: FileType.Animation,
       regex: [new RegExp(`playanimation ${SELECTOR_REGEX_NO_GROUP.source} ${ANIMATION_MATCH.source}`, 'g')],
-      link: true
+      link: false
     },
     {
       type: FileType.Dialogue,
@@ -69,7 +69,7 @@ class LineParser {
         new RegExp(`dialogue open ${SELECTOR_REGEX_NO_GROUP.source} ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g'),
         new RegExp(`dialogue change ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g')
       ],
-      link: true
+      link: false
     },
     // sound definitions
     {

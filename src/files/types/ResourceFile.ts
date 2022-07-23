@@ -2,9 +2,10 @@ import * as vscode from 'vscode'
 
 import { Node } from 'jsonc-parser'
 
-import { FileType, Data, DataTypeMap, DataType } from '../../handlers/FileHandler'
+import { FileType, Data, DataTypeMap, DataType, ResourceFilePackType } from '../../handlers/FileHandler'
 
-import { getAndParseFileContents, getOrderedFilesFromGlob } from '../../lib/files'
+import { getAndParseFileContents } from '../../lib/files'
+import { guessPackTypeFromDocument } from '../../lib/util'
 
 export interface BaseFile {
   format_version: string
@@ -36,6 +37,11 @@ export abstract class ResourceFile {
   public uri: vscode.Uri
 
   /**
+   * What pack type this file was found in
+   */
+  public packType: ResourceFilePackType = ResourceFilePackType.Unknown
+
+  /**
    * The data that this file contains
    */
   public data: DataTypeMap = new Map()
@@ -57,6 +63,9 @@ export abstract class ResourceFile {
    */
   public async extract () {
     const { node, data, document } = await getAndParseFileContents(this.uri)
+
+    this.packType = guessPackTypeFromDocument(document)
+
     if (node && data) {
       this.extractData(document, node, data)
     }
@@ -78,7 +87,8 @@ export abstract class ResourceFile {
    * Get an async generator for each file of the glob
    */
   public static async *getGlobGenerator () {
-    const files = await getOrderedFilesFromGlob(this.glob)
+    // const files = await getOrderedFilesFromGlob(this.glob)
+    const files = await vscode.workspace.findFiles(this.glob)
     for (let file of files) {
       yield file
     }

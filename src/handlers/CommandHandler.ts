@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-import FileSearcher, { DataType } from './FileHandler'
+import FileSearcher, { DataType, ResourceFilePackType } from './FileHandler'
 
 import { FileType } from '../handlers/FileHandler'
 
@@ -82,8 +82,13 @@ class CommandHandler {
           identifiers = [ ...usages.keys() ]
           break
         }
+        // playanimation only supports client side animations
+        case FileType.Animation: {
+          const data = await searcher.getIdentifiersByFileType(type, [ ResourceFilePackType.Resource, ResourceFilePackType.Unknown ])
+          identifiers = [ ...data.keys() ]
+          break
+        }
         case FileType.Dialogue:
-        case FileType.Animation:
         case FileType.SoundEffect:
         case FileType.Particle:
         case FileType.ServerEntityIdentifier: {

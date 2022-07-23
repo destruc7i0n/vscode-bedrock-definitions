@@ -1,18 +1,22 @@
 import * as vscode from 'vscode'
+import { sep as pathSep } from 'path'
 
 import { Node, findNodeAtLocation } from 'jsonc-parser'
+import { ResourceFilePackType } from '../handlers/FileHandler'
 
 /**
  * Construct completion item
  * @param text 
  * @param range 
  * @param kind 
+ * @param doc
  */
-function getCompletionItem (text: string, range: vscode.Range, kind: vscode.CompletionItemKind = vscode.CompletionItemKind.Value): vscode.CompletionItem {
+function getCompletionItem (text: string, range: vscode.Range, kind: vscode.CompletionItemKind = vscode.CompletionItemKind.Value, doc?: string): vscode.CompletionItem {
   const item = new vscode.CompletionItem(text)
   item.kind = kind
   item.insertText = text
   item.range = range
+  if (doc) item.documentation = doc
   return item
 }
 
@@ -83,4 +87,31 @@ function removeEndingQuote (string: string) {
   return string
 }
 
-export { getCompletionItem, cleanJson, getDocumentLink, nodeToRange, getRangeFromPath, removeEndingQuote, log }
+/**
+ * attempt to determine the pack type from the file path
+ * @param doc vscode.TextDocument
+ * @returns 
+ */
+function guessPackTypeFromDocument(doc: vscode.TextDocument): ResourceFilePackType {
+  const documentPath = doc.uri.fsPath
+
+  // check for either development or the world packs folder in the path
+  const hasPacksFolderInPath = (folder: string) =>
+    documentPath.includes(`${pathSep}development_${folder}${pathSep}`) ||
+    documentPath.includes(`${pathSep}${folder}${pathSep}`)
+
+  if (hasPacksFolderInPath('behavior_packs')) return ResourceFilePackType.Behaviour
+  else if (hasPacksFolderInPath('resource_packs')) return ResourceFilePackType.Resource
+  return ResourceFilePackType.Unknown
+}
+
+export {
+  getCompletionItem,
+  cleanJson,
+  getDocumentLink,
+  nodeToRange,
+  getRangeFromPath,
+  removeEndingQuote,
+  guessPackTypeFromDocument,
+  log
+}
