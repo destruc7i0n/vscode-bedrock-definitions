@@ -21,7 +21,7 @@
     "type": "git",
     "url": "https://github.com/destruc7i0n/vscode-bedrock-definitions"
   },
-  "license": "MIT",
+  "license": "GPL3",
   "publisher": "destruc7i0n",
   "categories": [
     "Programming Languages",
