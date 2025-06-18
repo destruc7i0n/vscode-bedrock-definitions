@@ -7,7 +7,8 @@
     "baseUrl": "./src",
     "sourceMap": true,
     "rootDir": "src",
-    "strict": true
+    "strict": true,
+    "skipLibCheck": true
     /* Additional Checks */
     // "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
     // "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */

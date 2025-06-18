@@ -76,7 +76,10 @@ export type ReferencesInfo = RangeInfo & { ref: FileType }
 
 class FileHandler {
   private filesCache: FilesData = new Map()
-  private bulkMutex: { [key in FileType]?: Mutex } = {}
+  private filePathCache: Map<string, { type: FileType, file: ResourceFile }> = new Map()
+  private bulkMutex: Map<FileType, Mutex> = new Map()
+  private cacheAccessOrder: string[] = []
+  private static readonly MAX_CACHE_SIZE = 1000
 
   private handlers: Map<FileType, HandlerType> = new Map([
     [ FileType.Geometry, GeometryFile ],
@@ -97,6 +100,7 @@ class FileHandler {
    */
   public emptyCache () {
     this.filesCache.clear()
+    this.filePathCache.clear()
   }
 
   /**
@@ -113,17 +117,25 @@ class FileHandler {
    * @param file 
    * @param type 
    */
-  public async getFile (file: vscode.Uri, type?: FileType) {
-    const path = file.path
-    for (let [ type, files ] of this.filesCache) {
-      if (files.has(path)) {
-        return { type, file: files.get(path)! }
+  public async getFile (file: vscode.Uri, type?: FileType): Promise<{ type: FileType, file: ResourceFile } | undefined> {
+    const path = file.fsPath
+    const cached = this.filePathCache.get(path)
+    if (cached) {
+      this.updateCacheAccess(path)
+      return cached
+    }
+    
+    if (type !== undefined && type !== FileType.None) {
+      try {
+        const resourceFile = await this.initFile(type, file)
+        if (resourceFile) {
+          return { type, file: resourceFile }
+        }
+      } catch (error) {
+        console.error(`Failed to get file: ${path}`, error)
       }
     }
-    if (type) {
-      const resourceFile = await this.initFile(type, file)
-      return { type, file: resourceFile }
-    }
+    return undefined
   }
 
   /**
@@ -145,9 +157,13 @@ class FileHandler {
    * @param file the file to delete from the cache
    */
   public async deleteFileFromCache (file: vscode.Uri) {
-    const path = file.path
+    const path = file.fsPath
     const fileData = await this.getFile(file)
-    if (fileData) this.filesCache.get(fileData.type)?.delete(path)
+    if (fileData) {
+      this.filesCache.get(fileData.type)?.delete(path)
+      this.filePathCache.delete(path)
+      this.removeFromCacheAccess(path)
+    }
   }
 
   /**
@@ -155,20 +171,38 @@ class FileHandler {
    * @param type 
    * @param file 
    */
-  private async initFile (type: FileType, file: vscode.Uri) {
-    if (!this.filesCache.has(type)) this.filesCache.set(type, new Map())
-
-    const typeMap = this.filesCache.get(type)!
-    if (!typeMap.has(file.path)) {
-      const Handler = this.getFileHandler(type)
-      if (Handler) {
-        // @ts-ignore
-        const handler = new Handler(file)
-        await handler.extract()
-        typeMap.set(file.path, handler)
+  private async initFile (type: FileType, file: vscode.Uri): Promise<ResourceFile | undefined> {
+    try {
+      if (!this.filesCache.has(type)) {
+        this.filesCache.set(type, new Map())
       }
+
+      const typeMap = this.filesCache.get(type)!
+      const filePath = file.fsPath
+      
+      const existingHandler = typeMap.get(filePath)
+      if (existingHandler) return existingHandler
+
+      const Handler = this.getFileHandler(type)
+      if (!Handler) {
+        console.warn(`No handler found for file type: ${FileType[type]}`)
+        return undefined
+      }
+
+      // Handler is guaranteed to be a concrete class from our handlers map
+      const handler = new (Handler as any)(file) as ResourceFile
+      await handler.extract()
+      
+      typeMap.set(filePath, handler)
+      this.filePathCache.set(filePath, { type, file: handler })
+      this.updateCacheAccess(filePath)
+      
+      return handler
+    } catch (error) {
+      console.error(`Failed to initialize file ${file.fsPath}:`, error)
+      vscode.window.showErrorMessage(`Failed to process file: ${file.fsPath}`)
+      return undefined
     }
-    return typeMap.get(file.path)!
   }
 
   /**
@@ -177,43 +211,70 @@ class FileHandler {
    */
   private async conditionallyExtractFromFileByType (type: FileType) {
     const Handler = this.getFileHandler(type)
-    if (Handler) {
-      const gen = Handler.getGlobGenerator()
+    if (!Handler) return
+    
+    const gen = Handler.getGlobGenerator()
+    const BATCH_SIZE = 10
 
-      // show progress while getting all the files
-      await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: `Updating Bedrock Definitions for "${Handler.title}"...`
-      }, async () => {
-        for await (let file of gen) {
-          await this.initFile(type, file)
+    // show progress while getting all the files
+    await vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: `Updating Bedrock Definitions for "${Handler.title}"...`,
+      cancellable: true
+    }, async (progress, token) => {
+      const batch: vscode.Uri[] = []
+      
+      for await (const file of gen) {
+        if (token.isCancellationRequested) break
+        
+        batch.push(file)
+        
+        if (batch.length >= BATCH_SIZE) {
+          await Promise.all(batch.map(f => this.initFile(type, f)))
+          batch.length = 0
+          
+          // Update progress
+          progress.report({ increment: 1 })
         }
-      })
-    }
+      }
+      
+      // Process remaining files
+      if (batch.length > 0) {
+        await Promise.all(batch.map(f => this.initFile(type, f)))
+      }
+    })
   }
 
   /**
    * Get a mutex for each type
    * @param type the type to get the mutex for
    */
-  private async getMutexForType (type: FileType) {
-    if (!this.bulkMutex[type]) this.bulkMutex[type] = new Mutex()
-    return await this.bulkMutex[type]!.acquire()
+  private getMutexForType (type: FileType): Mutex {
+    let mutex = this.bulkMutex.get(type)
+    if (!mutex) {
+      mutex = new Mutex()
+      this.bulkMutex.set(type, mutex)
+    }
+    return mutex
   }
 
   /**
    * Get all data from each file of type
    * @param type the type to get
    */
-  public async getAllByType (type: FileType) {
+  public async getAllByType (type: FileType): Promise<FileData> {
     // use a mutex to only run one bulk get a time
-    const release = await this.getMutexForType(type)
-    if (!this.filesCache.has(type)) {
-      await this.conditionallyExtractFromFileByType(type)
+    const release = await this.getMutexForType(type).acquire()
+    try {
+      let fileData = this.filesCache.get(type)
+      if (!fileData) {
+        await this.conditionallyExtractFromFileByType(type)
+        fileData = this.filesCache.get(type) ?? new Map()
+      }
+      return fileData
+    } finally {
+      release()
     }
-    release()
-
-    return this.filesCache.get(type)!
   }
 
   /**
@@ -222,14 +283,14 @@ class FileHandler {
    * @param dataType the specific data to get
    * @param packTypes the types of pack to get
    */
-  public async getAllOfTypeByDataType (type: FileType, dataType: DataType, packTypes?: ResourceFilePackType[]) {
-    let map: DefinitionLocation = new Map()
+  public async getAllOfTypeByDataType (type: FileType, dataType: DataType, packTypes?: ResourceFilePackType[]): Promise<DefinitionLocation> {
+    const map: DefinitionLocation = new Map()
 
     const fileData = await this.getAllByType(type)
-    for (let [ file, resourceFile ] of fileData) {
+    for (const [ file, resourceFile ] of fileData) {
       const data = resourceFile.get(dataType)
       if (data) {
-        for (let [ id, info ] of data) {
+        for (const [ id, info ] of data) {
           if (packTypes && !packTypes.includes(resourceFile.packType)) continue
 
           map.set(id, {
@@ -281,6 +342,47 @@ class FileHandler {
     const textures = await vscode.workspace.findFiles(`**/${path}.{png,tga}`)
 
     if (textures && textures.length === 1) return textures[0]
+  }
+
+  /**
+   * Update cache access order for LRU eviction
+   * @param path the file path to update
+   */
+  private updateCacheAccess(path: string): void {
+    const index = this.cacheAccessOrder.indexOf(path)
+    if (index > -1) {
+      this.cacheAccessOrder.splice(index, 1)
+    }
+    this.cacheAccessOrder.push(path)
+    
+    // Evict oldest entries if cache is too large
+    while (this.cacheAccessOrder.length > FileHandler.MAX_CACHE_SIZE && this.cacheAccessOrder.length > 0) {
+      const toEvict = this.cacheAccessOrder.shift()!
+      this.evictFromCache(toEvict)
+    }
+  }
+
+  /**
+   * Remove path from cache access tracking
+   * @param path the file path to remove
+   */
+  private removeFromCacheAccess(path: string): void {
+    const index = this.cacheAccessOrder.indexOf(path)
+    if (index > -1) {
+      this.cacheAccessOrder.splice(index, 1)
+    }
+  }
+
+  /**
+   * Evict a file from all caches
+   * @param path the file path to evict
+   */
+  private evictFromCache(path: string): void {
+    const cached = this.filePathCache.get(path)
+    if (cached) {
+      this.filesCache.get(cached.type)?.delete(path)
+      this.filePathCache.delete(path)
+    }
   }
 }
 

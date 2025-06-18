@@ -15,8 +15,6 @@ const SELECTOR_REGEX_NO_GROUP = /@(?:initiator|[a-z])(?:\[[^\]]*\])?/g
 
 const LOCATION_REGEX = /(?:[\~\^](?:\-?\d*\.?\d+)? *){3}/
 
-export type Usage = Map<SupportedTypes, UsageData>
-export type UsageData = Data<LineInfo[]>
 export type LineInfo = { range: vscode.Range, link: boolean }
 
 export type SupportedTypes =
@@ -27,69 +25,153 @@ export type SupportedTypes =
   FileType.Animation |
   FileType.Dialogue |
   DataType.ServerEntityEvents
-type SupportedUsageType = { type: SupportedTypes, prefix?: string, regex: RegExp[], link: boolean }
 
-// an extremely simple line parser, will need to be rewritten in the future
+type SupportedUsageType = { 
+  type: SupportedTypes
+  prefix?: string
+  regex: RegExp[]
+  link: boolean
+}
+
+class UsageEntry {
+  constructor(
+    public type: SupportedTypes,
+    public content: string,
+    public ranges: LineInfo[]
+  ) {}
+
+  addRange(range: vscode.Range, link: boolean) {
+    this.ranges.push({ range, link })
+  }
+
+  containsPosition(position: vscode.Position): LineInfo | undefined {
+    return this.ranges.find(({ range }) => range.contains(position))
+  }
+}
+
+class UsageStore {
+  private entries: UsageEntry[] = []
+  private index: Map<string, UsageEntry[]> = new Map()
+
+  add(type: SupportedTypes, content: string, range: vscode.Range, link: boolean) {
+    const key = `${type}:${content}`
+    let entryList = this.index.get(key)
+    
+    if (!entryList) {
+      entryList = []
+      this.index.set(key, entryList)
+    }
+
+    let entry = entryList.find(e => e.type === type && e.content === content)
+    if (!entry) {
+      entry = new UsageEntry(type, content, [])
+      entryList.push(entry)
+      this.entries.push(entry)
+    }
+
+    entry.addRange(range, link)
+  }
+
+  getAtPosition(position: vscode.Position) {
+    for (const entry of this.entries) {
+      const info = entry.containsPosition(position)
+      if (info) {
+        const rangeUntilCursor = info.range.with({ 
+          end: new vscode.Position(
+            info.range.end.line,
+            Math.min(info.range.end.character, position.character)
+          )
+        })
+        return {
+          content: entry.content,
+          range: rangeUntilCursor,
+          type: entry.type,
+        }
+      }
+    }
+    return undefined
+  }
+
+  // For compatibility with existing code
+  toMap(): Map<SupportedTypes, Data<LineInfo[]>> {
+    const result = new Map<SupportedTypes, Data<LineInfo[]>>()
+    
+    for (const entry of this.entries) {
+      let typeMap = result.get(entry.type)
+      if (!typeMap) {
+        typeMap = new Map()
+        result.set(entry.type, typeMap)
+      }
+      typeMap.set(entry.content, entry.ranges)
+    }
+    
+    return result
+  }
+}
+
+// Pre-compiled regex patterns for better performance
+const COMMAND_PATTERNS: SupportedUsageType[] = [
+  {
+    type: FileType.McFunction,
+    regex: [new RegExp(`function ${FILE_LOCATION.source}`, 'g')],
+    link: true
+  },
+  {
+    type: FileType.Particle,
+    regex: [new RegExp(`particle ${RESOURCE_ID.source}`, 'g')],
+    link: true
+  },
+  {
+    type: DataType.ServerEntityEvents,
+    regex: [new RegExp(`event entity ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`, 'g')],
+    link: false
+  },
+  {
+    type: FileType.ServerEntityIdentifier,
+    regex: [new RegExp(`summon ${RESOURCE_ID.source}`, 'g')],
+    link: true
+  },
+  {
+    type: FileType.Animation,
+    regex: [new RegExp(`playanimation ${SELECTOR_REGEX_NO_GROUP.source} ${ANIMATION_MATCH.source}`, 'g')],
+    link: false
+  },
+  {
+    type: FileType.Dialogue,
+    regex: [
+      new RegExp(`dialogue open ${SELECTOR_REGEX_NO_GROUP.source} ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g'),
+      new RegExp(`dialogue change ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g')
+    ],
+    link: false
+  },
+  {
+    type: FileType.SoundEffect,
+    regex: [
+      new RegExp(`playsound ${RESOURCE_ID.source}`, 'g'),
+      new RegExp(`stopsound ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`, 'g')
+    ],
+    link: false
+  },
+]
+
+const SELECTOR_PATTERNS: SupportedUsageType[] = [
+  { type: FileType.ServerEntityIdentifier, prefix: 'type', regex: [RESOURCE_ID], link: false }
+]
+
 class LineParser {
   private line: vscode.TextLine
   private lineContent: string
   private lineStartIndex: number
+  private usageStore = new UsageStore()
 
-  usages: Usage = new Map()
-
-  private supportedCommands: SupportedUsageType[] = [
-    {
-      type: FileType.McFunction,
-      regex: [new RegExp(`function ${FILE_LOCATION.source}`, 'g')],
-      link: true
-    },
-    {
-      type: FileType.Particle,
-      regex: [new RegExp(`particle ${RESOURCE_ID.source}`, 'g')],
-      link: true
-    },
-    {
-      type: DataType.ServerEntityEvents,
-      regex: [new RegExp(`event entity ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`, 'g')],
-      link: false
-    },
-    {
-      type: FileType.ServerEntityIdentifier,
-      regex: [new RegExp(`summon ${RESOURCE_ID.source}`, 'g')],
-      link: true
-    },
-    {
-      type: FileType.Animation,
-      regex: [new RegExp(`playanimation ${SELECTOR_REGEX_NO_GROUP.source} ${ANIMATION_MATCH.source}`, 'g')],
-      link: false
-    },
-    {
-      type: FileType.Dialogue,
-      regex: [
-        new RegExp(`dialogue open ${SELECTOR_REGEX_NO_GROUP.source} ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g'),
-        new RegExp(`dialogue change ${SELECTOR_REGEX_NO_GROUP.source} (${IDENTIFIER.source})`, 'g')
-      ],
-      link: false
-    },
-    // sound definitions
-    {
-      type: FileType.SoundEffect,
-      regex: [
-        new RegExp(`playsound ${RESOURCE_ID.source}`, 'g'),
-        new RegExp(`stopsound ${SELECTOR_REGEX_NO_GROUP.source} ${RESOURCE_ID.source}`, 'g')
-      ],
-      link: false
-    },
-  ]
-
-  private supportedSelectors: SupportedUsageType[] = [
-    { type: FileType.ServerEntityIdentifier, prefix: 'type', regex: [RESOURCE_ID], link: false }
-  ]
+  // Expose for compatibility
+  get usages() {
+    return this.usageStore.toMap()
+  }
 
   constructor (line: vscode.TextLine) {
     this.line = line
     this.lineContent = line.text.substring(line.firstNonWhitespaceCharacterIndex, line.text.length)
-
     this.lineStartIndex = line.firstNonWhitespaceCharacterIndex
 
     if (this.isValidLine()) {
@@ -103,26 +185,7 @@ class LineParser {
    * @param cursorPosition the position of the cursor
    */
   public getUsageAtCursorPosition (cursorPosition: vscode.Position) {
-    for (let [ type, usages ] of this.usages) {
-      for (let [ content, ranges ] of usages) {
-        for (let { range } of ranges) {
-          if (range.contains(cursorPosition)) {
-            const rangeUntilCursor = range.with({ 
-              end: new vscode.Position(
-                range.end.line,
-                // don't go past the cursor
-                Math.min(range.end.character, cursorPosition.character)
-              )
-            })
-            return {
-              content,
-              range: rangeUntilCursor,
-              type,
-            }
-          }
-        }
-      }
-    }
+    return this.usageStore.getAtPosition(cursorPosition)
   }
 
   /**
@@ -134,24 +197,15 @@ class LineParser {
 
   /**
    * Extract all command usages from the line
-   * @param line the line of the document to be extracted
-   * @param call the call to search for
-   * @param lineNumber the current line number
    */
   private extractCommandCalls () {
-    for (let supportedCommand of this.supportedCommands) {
-      const { type } = supportedCommand
-
-      for (let regex of supportedCommand.regex) {
-        // init map
-        if (!this.usages.has(type)) this.usages.set(type, new Map())
-        let entries = this.usages.get(type)!
-
+    for (const pattern of COMMAND_PATTERNS) {
+      for (const regex of pattern.regex) {
         const matches = this.lineContent.matchAll(regex)
 
-        for (let match of matches) {
+        for (const match of matches) {
           if (match && match.length === 2 && match.index !== undefined) {
-            let [ command, id ] = match
+            const [command, id] = match
 
             // remove the id from the command to get the index where the resource is used
             const commandPrefix = command.replace(id, '')
@@ -163,10 +217,7 @@ class LineParser {
               new vscode.Position(this.line.lineNumber, start + id.length)
             )
 
-            entries.set(id, [
-              ...(entries.get(id) || []),
-              { range, link: supportedCommand.link }
-            ])
+            this.usageStore.add(pattern.type, id, range, pattern.link)
           }
         }
       }
@@ -178,96 +229,88 @@ class LineParser {
    */
   private extractSelectors () {
     const selectorMatches = this.lineContent.matchAll(SELECTOR_ARGUMENTS_REGEX)
-    for (let match of selectorMatches) {
+    for (const match of selectorMatches) {
       let selectorText = match[1]
 
       if (selectorText) {
         // remove a trailing quote if any, from a json file
         selectorText = removeEndingQuote(selectorText)
-        this.parseSelector(selectorText, 0, match.index!)
+        this.parseSelector(selectorText, match.index!)
       }
     }
   }
 
-  /**
-   * Simple parser to extract and check the KV pairs in the selector
-   * @param input the inside of the selector
-   * @param index the index to start at in the input
-   * @param startIndex the starting index in the entire line
-   */
-  private parseSelector (input: string, index: number, startIndex: number) {
-    // base
-    if (index > input.length || input.charAt(index) === ']') return
-
-    // get the key
-    let key = ''
-    while (index < input.length && input.charAt(index) !== '=') {
-      key += input.charAt(index)
-      index++
-    }
-
-    // remove any spaces around
-    const trimmedKey = key.trim()
-
-    // account for the "="
-    index++
-
-    // string starting index + current index + index that the selector is starting
-    let valueStartIndex = this.lineStartIndex + index + startIndex
-    let value = ''
-    // while not at the end of a key
-    if (trimmedKey === 'scores' || trimmedKey === 'hasitem') {
-      index++ // the first curly bracket
-      while (index < input.length && input.charAt(index) !== '}') {
-        value += input.charAt(index)
-        index++
-      }
-      index++ // the second curly bracket
-    } else {
-      // wait until next param
-      while (index < input.length && input.charAt(index) !== ',') {
-        value += input.charAt(index)
-        index++
-      }
-    }
-
-    // remove any spaces around
-    let trimmedValue = value.trim()
-    let valueLength = value.length
-
-    // ingore negation characters
-    if (trimmedValue.charAt(0) === '!') {
-      trimmedValue = trimmedValue.substring(1)
-      valueStartIndex += 1
-      valueLength -= 1
-    }
-
-    // construct the range from the position
-    const valueRange = new vscode.Range(
-      new vscode.Position(this.line.lineNumber, valueStartIndex),
-      new vscode.Position(this.line.lineNumber, valueStartIndex + valueLength)
-    )
-
-    selectorLoop:
-    for (let { type, prefix, link, regex } of this.supportedSelectors) {
-      if (prefix === key) {
-        // verify that the value matches the regex
-        for (let re of regex) {
-          if(trimmedValue.length > 0 && !re.test(trimmedValue)) continue selectorLoop
+  private parseSelector(input: string, startIndex: number) {
+    let i = 0
+    
+    while (i < input.length) {
+      // Skip whitespace
+      while (i < input.length && /\s/.test(input[i])) i++
+      
+      if (i >= input.length || input[i] === ']') break
+      
+      // Parse key
+      const keyStart = i
+      while (i < input.length && input[i] !== '=' && !/\s/.test(input[i])) i++
+      const key = input.substring(keyStart, i).trim()
+      
+      // Skip whitespace and '='
+      while (i < input.length && (input[i] === '=' || /\s/.test(input[i]))) i++
+      
+      // Parse value
+      const valueStart = i
+      let valueEnd = i
+      
+      if (key === 'scores' || key === 'hasitem') {
+        // Handle nested structures
+        if (input[i] === '{') {
+          let braceCount = 1
+          i++
+          while (i < input.length && braceCount > 0) {
+            if (input[i] === '{') braceCount++
+            else if (input[i] === '}') braceCount--
+            i++
+          }
+          valueEnd = i - 1
         }
-
-        if (!this.usages.has(type)) this.usages.set(type, new Map())
-        let entries = this.usages.get(type)!
-        entries.set(trimmedValue, [
-          ...(entries.get(trimmedValue) || []),
-          { range: valueRange, link }
-        ])
+      } else {
+        // Regular value
+        while (i < input.length && input[i] !== ',' && input[i] !== ']') i++
+        valueEnd = i
       }
+      
+      // Process the key-value pair
+      let value = input.substring(valueStart, valueEnd).trim()
+      let actualValueStart = this.lineStartIndex + valueStart + startIndex
+      
+      // Handle negation
+      if (value.startsWith('!')) {
+        value = value.substring(1)
+        actualValueStart++
+      }
+      
+      // Check against supported selectors
+      for (const pattern of SELECTOR_PATTERNS) {
+        if (pattern.prefix === key && value.length > 0) {
+          const isValid = pattern.regex.every(re => re.test(value))
+          if (isValid) {
+            const range = new vscode.Range(
+              new vscode.Position(this.line.lineNumber, actualValueStart),
+              new vscode.Position(this.line.lineNumber, actualValueStart + value.length)
+            )
+            this.usageStore.add(pattern.type, value, range, pattern.link)
+          }
+        }
+      }
+      
+      // Skip comma
+      if (i < input.length && input[i] === ',') i++
     }
-
-    // begin next argument
-    this.parseSelector(input, index + 1, startIndex)
   }
 }
 
 export default LineParser
+
+// Export types for compatibility
+export type Usage = Map<SupportedTypes, UsageData>
+export type UsageData = Data<LineInfo[]>

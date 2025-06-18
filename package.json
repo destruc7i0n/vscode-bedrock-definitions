@@ -49,7 +49,9 @@
   },
   "scripts": {
     "package": "vsce package",
-    "vscode:prepublish": "yarn run compile",
+    "vscode:prepublish": "yarn run build",
+    "build": "yarn run compile && yarn run bundle",
+    "bundle": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "yarn run compile",
@@ -58,8 +60,9 @@
   "devDependencies": {
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
-    "@types/node": "^18.0.6",
+    "@types/node": "^24.0.3",
     "@types/vscode": "^1.37.0",
+    "esbuild": "^0.25.5",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",
     "tslint": "^6.1.3",
