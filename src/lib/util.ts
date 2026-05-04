@@ -37,6 +37,8 @@ function getDocumentLink (file: vscode.Uri, range: vscode.Range, tooltip?: strin
  * @param data the content of the file
  */
 function cleanJson (data: string) {
+  // Strip UTF-8 BOM if present (some resource pack tools add it)
+  data = data.replace(/^\uFEFF/, '')
   data = data.replace(/\/\*[^(\*\/)]*\*\/|\/\/.*/g, '')
 
   try {

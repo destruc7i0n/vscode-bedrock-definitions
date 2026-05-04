@@ -17,7 +17,7 @@ interface FileContent {
 async function getAndParseFileContents (file: vscode.Uri): Promise<FileContent> {
   // why must `openTextDocument` take so long...
   const document = await vscode.workspace.openTextDocument(file)
-  const textContent = document.getText()
+  const textContent = document.getText().replace(/^\uFEFF/, '')
 
   try {
     return {
